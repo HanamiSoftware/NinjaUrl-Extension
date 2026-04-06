@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "NinjaUrl",
+  "version": "1.0",
+  "action": {
+    "default_title": "NinjaUrl",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "service/background.js"
+  },
+  "host_permissions": [
+    "https://ninjaurl.io/*",
+    "https://api.ninjaurl.io/*",
+    "https://auth.ninjaurl.io/*",
+    "https://n2l.ink/*"
+  ],
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "clipboardWrite",
+    "sidePanel",
+    "notifications",
+    "identity",
+    "tabs"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "libs/qrcode-styling.js",
+        "libs/authgear-web.iife.js"
+      ],
+      "matches": [ "<all_urls>" ]
+    }
+  ]
+}
