@@ -4,13 +4,13 @@ Minimal Chrome extension to generate NinjaLinks (smart short URLs) instantly fro
 
 ## Demo
 
-![Demo](./assets/demo/demo.gif)
+![Demo](assets/demo/demo.gif)
 
 ## What it does
 
 NinjaURL lets you shorten the current tab URL in one click and copy it immediately.
 
-It’s built to stay out of the way and integrate directly into your browsing workflow.
+Itâ€™s built to stay out of the way and integrate directly into your browsing workflow.
 
 ## Features
 
