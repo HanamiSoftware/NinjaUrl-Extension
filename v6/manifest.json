@@ -17,7 +17,8 @@
     "https://ninjaurl.io/*",
     "https://api.ninjaurl.io/*",
     "https://auth.ninjaurl.io/*",
-    "https://n2l.ink/*"
+    "https://n2l.ink/*",
+    "https://auth.ninjaconnect.io/*"
   ],
 
   "permissions": [
@@ -25,25 +26,15 @@
     "activeTab",
     "clipboardWrite",
     "sidePanel",
-    "notifications",
     "identity",
     "tabs"
   ],
   "side_panel": {
-    "default_path": "sidepanel.html"
+    "default_path": "panel/sidepanel.html"
   },
   "icons": {
     "16": "assets/icons/icon16.png",
     "48": "assets/icons/icon48.png",
     "128": "assets/icons/icon128.png"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "libs/qrcode-styling.js",
-        "libs/authgear-web.iife.js"
-      ],
-      "matches": [ "<all_urls>" ]
-    }
-  ]
+  }
 }

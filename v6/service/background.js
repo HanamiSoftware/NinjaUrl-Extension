@@ -2,11 +2,41 @@
 // @ts-check
 
 console.log("Background worker attivato");
+
+let currentUrl = "";
+//init background worker
 chrome.action.onClicked.addListener((tab) => {
     chrome.sidePanel.open({ tabId: tab.id });
 });
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    const tab = await chrome.tabs.get(activeInfo.tabId);
+    updateUrl(tab.url);
+});
 
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (tab.active && changeInfo.url) {
+        updateUrl(changeInfo.url);
+    }
+});
+
+function updateUrl(url) {
+    currentUrl = normalize(url);
+
+    // PROVA a notificare (ma senza rompere)
+    chrome.runtime.sendMessage({
+        type: "URL_UPDATED",
+        url: currentUrl
+    }).catch(() => { });
+}
+
+function normalize(url) {
+    if (!url || url.startsWith("chrome://") || url.startsWith("about:") || url.startsWith("edge://")) {
+        return "This Page cannot be Shortened";
+    }
+    return url;
+}
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+
     if (msg.type === "SHORTEN_URL") {
         handleShorten(msg.payload.url).then(sendResponse);
         return true;
@@ -14,6 +44,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg.type === "GET_LINKS") {
         getLinks().then(sendResponse);
+        return true;
+    }
+
+    if (msg.type === "GET_CURRENT_URL") {
+
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+
+            sendResponse({ url: currentUrl });
+
+        });
         return true;
     }
 
