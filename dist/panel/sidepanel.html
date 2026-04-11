@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>NinjaURL</title>
+    <link rel="stylesheet" href="css/sidepanel.css">
+    <script src="libs/qr-code-styling.js" defer></script>
+    <script src="libs/authgear-web.iife.js" defer></script>
+    <script src="js/user.js" defer></script>
+    <script src="js/authgear.js" defer></script>
+    <script src="js/storage.js" defer></script>
+    <script src="js/recents.js" defer></script>
+    <script src="js/sidepanel.js" defer></script>
+</head>
+
+<body class="app">
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <img src="assets/logo/logo-small.png" class="topbar__logo">
+        <button class="topbar__login" id="loginBtn">Login</button>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+
+        <div class="hero">
+            <div class="hero-img"> <img src="assets/ui-icons/icon-dubbio.svg" class="hero__logo"></div>
+
+            <h1 class="hero__title">
+                Shorten this page?
+            </h1>
+
+            <p class="hero__url" id="currentUrl"></p>
+
+            <button class="cta" id="shortenBtn">Shorten and Copy</button>
+        </div>
+        <h2 class="recents-title">Recent Shortened URLs</h2>
+        <section class="recents" id="recentsList">
+            <!-- recents dinamici qui -->
+            <div class="empty-img">
+                <img src="assets/ui-icons/icon-triste.svg" />
+                
+            </div> 
+            <div class="empty-text">
+                <p>No recent URLs yet.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer"><a href="www.ninjaurl.io"></a> All Right Reserved to NinjaURL&trade;</footer>
+
+    <!-- QR modal -->
+    <div id="qrModal" class="qr-modal hidden">
+        <canvas id="qrCanvas"></canvas>
+    </div>
+
+</body>
+</html>
