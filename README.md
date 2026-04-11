@@ -4,7 +4,7 @@ Minimal Chrome extension to generate NinjaLinks (smart short URLs) instantly fro
 
 ## Demo
 
-![Demo](/assets/demo/demo.gif)
+![Demo](v6/assets/demo/demo.gif)
 
 ## What it does
 
