@@ -1,60 +1,139 @@
-# NinjaURL&trade; Chrome Extension
+﻿# NinjaURL — Smart NinjaLinks for Builders
 
-Minimal Chrome extension to generate NinjaLinks (smart short URLs) instantly from your browser.
+## Stop using dumb links.
 
-## Demo
+You’re still sharing static URLs in a dynamic world.
+They don’t adapt. They don’t optimize. They don’t learn.
 
-![Demo](v6/assets/demo/demo.gif)
+**NinjaURL turns every link into a programmable, intelligent asset.**
 
-## What it does
+---
 
-NinjaURL lets you shorten the current tab URL in one click and copy it immediately.
+## What it does (today)
 
-It’s built to stay out of the way and integrate directly into your browsing workflow.
+### Instant Link Creation
 
-## Features
+* Generate short links in milliseconds (`n2l.ink/slug`)
+* Custom slugs
+* Built for speed (API-first, no UI lag)
 
-- Shorten current tab URL instantly
-- One-click copy
-- Works with authenticated and anonymous users
-- Side panel interface
-- Ready for future analytics and link management
+### Chrome Extension
 
-## Architecture
+* One-click shortening from any tab
+* Zero context switching
+* Built for real workflows, not demos
 
-- Extension: Chrome Extension (Manifest V3)
-- Auth: NinjaConnect (AuthGear Hosted UI MVP AuthGear Self Hosted Final Product)
-- API: https://api.ninjaurl.io (not yet available)
-- Auth: https://auth.ninjaconnect.io (not yet available)
+### Dev-Friendly Auth
 
-## Installation
+* OAuth2 (PKCE)
+* Works across web + extension
+* Designed for multi-app ecosystems
 
-### Chrome Web Store
-Coming soon.
+### Clean, scalable backend
 
-### Manual install
+* API-first architecture
+* Built to evolve (not a dead-end shortener)
 
-```bash
-git clone https://github.com/YOUR_USERNAME/ninjaurl-chrome-extension.git
-```
-## Installation steps:
-- Open Chrome
-- Go to chrome://extensions/
-- Enable Developer Mode
-- Click "Load unpacked"
-- Select the project folder
+---
 
-## How it works
-- Reads the active tab URL user Click "Shorten and Copy"
-- Sends it to the NinjaURL API
-- Receives a short link
-- Shows it in the side panel
-- Allows instant copy
+## Why it’s different
 
-## Roadmap
-- Link history
-- QR code generation
-- Analytics dashboard
-- Retry / offline queue
-- Better anonymous UX
-- future implemntation (Suggestion AI) Ninja re:Mind&trade; integration for link management and analytics insights
+Most link shorteners are **finished products**.
+
+NinjaURL is an **evolving system**.
+
+It’s being built from day one to support:
+
+* automation
+* intelligence
+* developer workflows
+
+---
+
+## What’s coming (soon)
+
+### Smart Links
+
+Links that adapt based on:
+
+* device
+* location
+* time
+* user behavior
+
+Same URL → different destination.
+
+---
+
+### NinjaBOT
+
+Give it a raw URL → get:
+
+* optimized link
+* generated metadata
+* smart routing logic
+
+Future: prompt → link
+
+---
+
+### Real Analytics
+
+Not just clicks:
+
+* behavior patterns
+* insights
+* suggestions
+
+---
+
+### Advanced QR Engine
+
+* Fully styled QR codes
+* Logo embedding
+* High-quality export
+* Custom engine (not another wrapper)
+
+---
+
+### Dev Ecosystem
+
+* Public API expansion
+* Webhooks
+* Automation hooks
+* SDKs (planned)
+
+---
+
+## Who this is for
+
+* Indie hackers
+* SaaS builders
+* Devs who automate everything
+* People tired of glueing 5 tools together
+
+---
+
+## Current status
+
+MVP is working.
+Actively building and refining.
+
+No public landing page yet — focusing on shipping fast and not releasing something half-baked.
+
+---
+
+## Want early access?
+
+Drop a comment or DM me.
+I’ll let in a small group of early users first.
+
+---
+
+## Final thought
+
+Links are one of the most primitive parts of the web.
+
+They shouldn’t be.
+
+---
