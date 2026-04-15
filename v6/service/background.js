@@ -20,9 +20,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 function updateUrl(url) {
+
     currentUrl = normalize(url);
 
-    // PROVA a notificare (ma senza rompere)
     chrome.runtime.sendMessage({
         type: "URL_UPDATED",
         url: currentUrl
@@ -30,7 +30,7 @@ function updateUrl(url) {
 }
 
 function normalize(url) {
-    if (!url || url.startsWith("chrome://") || url.startsWith("about:") || url.startsWith("edge://")) {
+    if (!url && !(url.startsWith("https://") || url.startsWith("http://")){
         return "This Page cannot be Shortened";
     }
     return url;
