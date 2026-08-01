@@ -4,12 +4,8 @@
     <meta charset="UTF-8">
     <title>NinjaURL&trade;</title>
     <link rel="stylesheet" href="../css/sidepanel.css">
+    <script src="../js/NinjaURL.timestamp-manager.js" defer></script>
     <script src="../libs/qr-code-styling.js" defer></script>
-    <!--<script src="libs/authgear-web.iife.js" defer></script>
-    <script src="js/user.js" defer></script>
-    <script src="js/authgear.js" defer></script>
-    <script src="js/storage.js" defer></script>
-    <script src="js/recents.js" defer></script>-->
     <script src="../js/sidepanel.js" defer></script>
 </head>
 
@@ -18,7 +14,10 @@
     <!-- Topbar -->
     <header class="topbar">
         <img src="../assets/logo/logo-small.png" class="topbar__logo">
-        <!--<button class="topbar__login" id="loginBtn">Login</button>-->
+        <div id="profile_container">
+            <img id="profile_picture" style="display:none;" />
+            <button class="topbar__login login" id="loginBtn">Login</button>
+        </div>
     </header>
 
     <!-- Main -->
@@ -38,19 +37,13 @@
         <h2 class="recents-title">Recent Shortened URLs</h2>
         <section class="recents" id="recentsList">
             <!-- recents dinamici qui -->
-            <div class="empty-img">
-                <img src="../assets/ui-icons/icon-triste.svg" />
-                
-            </div> 
-            <div class="empty-text">
-                <p>No recent URLs yet.</p>
-            </div>
+            
         </section>
 
     </main>
 
     <!-- Footer -->
-    <footer class="footer"><a href="www.ninjaurl.io"></a> All Right Reserved to NinjaURL&trade;</footer>
+    <footer class="footer"><a href="www.ninjaurl.io">NinjaURL.io</a> All Right Reserved to NinjaURL&trade;</footer>
 
     <!-- QR modal -->
     <div id="qrModal" class="qr-modal hidden">

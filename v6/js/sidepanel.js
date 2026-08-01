@@ -6,6 +6,7 @@ let currentUser = { tier: "anonymous" };
 let allLinks = [];
 let showAll = false;
 const visibleCount = 5;
+
 // ======================
 // INIT
 // ======================
@@ -25,20 +26,22 @@ chrome.runtime.onMessage.addListener((msg) => {
         activeTabUrl = msg.url;
         updateCurrentUrlUI();
     }
+    if (msg.type === "USER_UPDATED") {
+        currentUser = msg.user || { tier: "anonymous" };
+        updateAuthUI();
+        renderLinks();
+    }
 });
-
 
 // ======================
 // ACTIVE TAB
 // ======================
 async function initActiveTab() {
-
     chrome.runtime.sendMessage({ type: "GET_CURRENT_URL" }, (response) => {
 
         if (!response?.url || !isValidUrl(response.url)) {
             activeTabUrl = "This Page cannot be Shortened";
         } else {
-
             activeTabUrl = response.url;
         }
         updateCurrentUrlUI();
@@ -65,14 +68,39 @@ function updateCurrentUrlUI() {
 }
 
 // ======================
-// USER
+// USER / AUTH
 // ======================
 async function loadUser() {
     const res = await chrome.runtime.sendMessage({ type: "GET_USER" });
     currentUser = res || { tier: "anonymous" };
+    updateAuthUI();
+}
 
-    const badge = document.getElementById("userTier");
-    if (badge) badge.textContent = currentUser.tier.toUpperCase();
+function updateAuthUI() {
+
+    const isLoggedIn = currentUser.tier !== "anonymous";
+    const authBtn = document.getElementById("loginBtn");
+    const profilePicture = document.getElementById("profile_picture");
+
+    if (!authBtn || !profilePicture) return;
+
+    if (isLoggedIn) {
+        profilePicture.src = currentUser.picture;
+        profilePicture.style.display = "block";
+        profilePicture.style = "width:25px;height:25px;border-radius:25px";
+
+        authBtn.textContent = `Ciao, ${currentUser.name}`;
+        authBtn.style = "vertical-align:super";
+        authBtn.dataset.state = "logged-in";
+
+    } else {
+
+        profilePicture.style.display = "none";
+        profilePicture.src = "";
+
+        authBtn.textContent = "Login";
+        authBtn.dataset.state = "anonymous";
+    }
 }
 
 // ======================
@@ -102,12 +130,23 @@ function renderLinks() {
     const container = document.getElementById("recentsList");
     if (!container) return;
     container.innerHTML = "";
+    if (!visible.length) {
+        const el = document.createElement("div");
+        el.className = "no-links";
+        el.innerHTML = `
+                <div class="empty-img">
+                    <img src="../assets/ui-icons/icon-triste.svg" />
+                </div> 
+                <div class="empty-text">
+                    <p>No recent URLs yet.</p>
+                </div>`
+        container.appendChild(el);
+    }
     visible.forEach((link, i) => {
         const el = document.createElement("div");
         el.dataset.id = link.id;
         el.dataset.short = link.short;
         el.classList.add("recent-card", "link-item");
-        /*el.style.maxHeight = showAll ? el.scrollHeight + "px" : "0";*/
         if (showAll) el.classList.add("show");
 
         el.innerHTML = `
@@ -115,21 +154,25 @@ function renderLinks() {
                 <div class="recent-card__top">
                     <p class="recent-card__short">${link.short.replace(/^https:\/\//, "")}</p>
                     <div class="recent-card__actions">
+                     <button class="icon-btn qr">
+                            <img src="../assets/ui-icons/qr.svg">
+                        </button>
                         <button class="icon-btn copy">
-                            <img src="../assets/ui-icons/copy-icon.svg" width="24" height="24">
+                            <img src="../assets/ui-icons/copy-icon.svg">
                         </button>
                         <button class="icon-btn dropdown-toggle">
-                            <img src="../assets/ui-icons/icon-menu.svg" width="24" height="24">
+                            <img src="../assets/ui-icons/icon-menu.svg">
                         </button>
                         <div class="dropdown-menu">
-                            <button data-action="qr" class="qr">Show QR</button>
                             <button data-action="dash">View in Dash</button>
                             <button data-action="delete">Delete</button>
+                            <button data-action="share">Share</button>
                         </div>
                     </div>
                 </div>
                 
                 <p class="recent-card__long">${link.long}</p>
+                <p class="recent-card__timestamp">${NinjaURL.time.getRelative(new Date(link.createdAt).getTime())}</p>
             </div>
             
         `;
@@ -143,11 +186,10 @@ function renderLinks() {
     });
 
     // Toggle View All / View Less
-    // Toggle button
     if (allLinks.length > visibleCount) {
         const btn = document.createElement("button");
         btn.className = "view-all-btn";
-        btn.style.textAlign = "right";
+        btn.style.textAlign = "left";
         btn.textContent = showAll ? "View Less" : "View All";
 
         btn.onclick = () => {
@@ -163,12 +205,42 @@ function renderLinks() {
 // EVENTS
 // ======================
 async function setupEvents() {
-
     document.addEventListener("click", (e) => {
+        if (e.target.closest(".dropdown-toggle")) return;
+        if (e.target.closest(".dropdown-menu")) return;
+
         document.querySelectorAll(".dropdown-menu.open").forEach(menu => {
             menu.classList.remove("open");
         });
-    });
+
+        const authBtn = e.target.closest("#loginBtn");
+        if (authBtn) {
+            if (authBtn.dataset.state === "logged-in") {
+                // LOGOUT
+                authBtn.textContent = "Logging out...";
+                chrome.runtime.sendMessage({ type: "LOGOUT" }, () => {
+                    currentUser = { tier: "anonymous" };
+                    updateAuthUI();
+                    renderLinks();
+                });
+            } else {
+                // LOGIN
+                authBtn.textContent = "Logging in...";
+                chrome.runtime.sendMessage({ type: "LOGIN" }, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        updateAuthUI();
+                        renderLinks();
+                    } else {
+                        updateAuthUI();
+                        // facoltativo: mostra un messaggio di errore nell'UI
+                    }
+                });
+            }
+            return;
+        }
+    }, true);
+
     const btn = document.getElementById("shortenBtn");
     if (!btn) return;
 
@@ -203,18 +275,17 @@ async function setupEvents() {
             btn.disabled = false;
         }, 1500);
     };
+
     const container = document.getElementById("recentsList");
     container.addEventListener("click", (e) => {
         const card = e.target.closest(".link-item");
         if (!card) return;
 
         const menu = card.querySelector(".dropdown-menu");
-        // ======================
+
         // TOGGLE DROPDOWN
-        // ======================
         if (e.target.closest(".dropdown-toggle")) {
             e.stopPropagation();
-
 
             document.querySelectorAll(".dropdown-menu.open").forEach(m => {
                 if (m !== menu) m.classList.remove("open");
@@ -224,9 +295,7 @@ async function setupEvents() {
             return;
         }
 
-        // ======================
         // AZIONI MENU
-        // ======================
         const actionBtn = e.target.closest(".dropdown-menu button");
         if (actionBtn) {
             e.stopPropagation();
@@ -235,19 +304,19 @@ async function setupEvents() {
             const id = card.dataset.id;
 
             switch (action) {
-                case "qr":
-                    showQR(card.dataset.short);
-                    break;
-                case "edit":
-                    console.log("Edit", id);
-                    break;
-
-                case "view":
-                    console.log("View", id);
+                case "dash":
+                    chrome.tabs.create({ url: `https://dash.ninjaurl.io/links/${id}` });
                     break;
 
                 case "delete":
-                    console.log("Delete", id);
+                    chrome.runtime.sendMessage({ type: "DELETE_LINK", payload: { id } }, async (res) => {
+                        if (res?.success) {
+                            await loadLinks();
+                        }
+                    });
+                    break;
+                case "share":
+                    share(card.dataset.short);
                     break;
             }
 
@@ -255,26 +324,31 @@ async function setupEvents() {
             return;
         }
 
-        // ======================
         // COPY BUTTON
-        // ======================
         if (e.target.closest(".copy")) {
             e.stopPropagation();
 
+            const btn = e.target.closest(".copy");
             const short = card.dataset.short;
+
+            btn.classList.add("copied");
             copy(short, card);
+
+            setTimeout(() => {
+                btn.classList.remove("copied");
+            }, 1200);
+
             return;
         }
 
-        // ======================
-        // CLICK SU CARD -> COPY
-        // ======================
-        if (
-            !e.target.closest(".icon-btn") &&
-            !e.target.closest(".dropdown-menu")
-        ) {
+        // QR BUTTON
+        if (e.target.closest(".qr")) {
+            e.stopPropagation();
+
             const short = card.dataset.short;
-            copy(short, card);
+            showQR(short);
+
+            return;
         }
     });
 }
@@ -284,12 +358,6 @@ async function setupEvents() {
 // ======================
 function copy(text, cardEl) {
     navigator.clipboard.writeText(text);
-
-    const el = cardEl.querySelector(".recent-card__short");
-    const original = el.textContent;
-
-    el.textContent = "Copied ✅";
-    setTimeout(() => el.textContent = original, 1000);
 }
 
 function share(url) {
@@ -302,39 +370,30 @@ function share(url) {
 }
 
 function showNewBadge(linkElement) {
-    const badge = document.createElement('img');
-    badge.src = '../assets/ui-icons/Tooltip.svg';
-    badge.style.cssText = `
-        position: absolute;
-        top: 20px;
-        left: 16px;
-        padding: 2px 6px;
-        border-radius: 4px;
-        opacity: 1;
-        transition: opacity 0.5s ease, transform 0.3s ease;
-        z-index: 10;
-        transform: translateY(-5px);
-    `;
+    const badge = document.createElement('div');
+    badge.className = 'new-badge';
 
+    const badge_image = document.createElement('img');
+    badge_image.src = '../assets/ui-icons/Tooltip.svg';
+    badge.appendChild(badge_image);
 
-    setTimeout(() => badge.style.transform = 'translateY(0)', 50);
+    linkElement.prepend(badge);
 
-    linkElement.style.position = 'relative';
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            badge.classList.add('hide');
 
-    linkElement.appendChild(badge);
+            badge.addEventListener('transitionend', () => {
+                badge.remove();
+            }, { once: true });
 
-    setTimeout(() => {
-        badge.style.opacity = '0';
-        badge.style.transform = 'translateY(-5px)';
-    }, 5000);
-
-    setTimeout(() => badge.remove(), 5500);
+        }, 3000);
+    });
 }
 
 // ======================
 // QR
 // ======================
-
 function showQR(url) {
     let currentQR = null;
 
@@ -343,14 +402,12 @@ function showQR(url) {
 
     if (!modal || !qrContainer) return;
 
-    
     qrContainer.innerHTML = "";
 
     modal.classList.remove("hidden");
 
     currentQR = new QRCodeStyling(getQRConfig(url));
 
-    
     currentQR.append(qrContainer);
 
     modal.onclick = () => modal.classList.add("hidden");
@@ -359,6 +416,7 @@ function showQR(url) {
 function getQRConfig(url) {
     url = addUrlParam(url, "source", "qr");
 
+    //impostazioni di base per il piano freemium
     const base = {
         data: url,
         width: 180,
@@ -389,27 +447,27 @@ function getQRConfig(url) {
             type: "dots"
         }
     };
+    //cambiare impostazione a seconda del piano scelto
+    if (currentUser.tier === "premium") {
+        return {
+            ...base,
+            image: "../assets/logo/logo-happy.png",
+            dotsOptions: { color: "#000", type: "extra-rounded" },
+            cornersSquareOptions: {color:"#000", type: "extra-rounded" }
+        };
+    }
 
-    //if (currentUser.tier === "premium") {
-    //    return {
-    //        ...base,
-    //        image: "../assets/logo/logo-happy.png",
-    //        dotsOptions: { color: "#000", type: "extra-rounded" },
-    //        cornersSquareOptions: {color:"#000", type: "extra-rounded" }
-    //    };
-    //}
+    if (currentUser.tier === "free") {
+        return {
+            ...base,
+            dotsOptions: { color: "#000", type: "rounded" }
+        };
+    }
 
-    //if (currentUser.tier === "free") {
-    //    return {
-    //        ...base,
-    //        dotsOptions: { color: "#000", type: "rounded" }
-    //    };
-    //}
-
-    //return {
-    //    ...base,
-    //    dotsOptions: { color: "#555", type: "rounded" }
-    //};
+    return {
+        ...base,
+        dotsOptions: { color: "#555", type: "rounded" }
+    };
 
     return base;
 }

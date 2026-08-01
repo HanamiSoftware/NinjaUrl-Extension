@@ -23,11 +23,10 @@
 
   "permissions": [
     "storage",
-    "activeTab",
-    "clipboardWrite",
     "sidePanel",
     "identity",
-    "tabs"
+    "tabs",
+    "activeTab"
   ],
   "side_panel": {
     "default_path": "panel/sidepanel.html"
