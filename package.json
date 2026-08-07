@@ -2,8 +2,11 @@
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.2",
+    "@eslint/js": "^10.0.1",
     "@types/chrome": "^0.1.38",
     "babel-loader": "^10.1.1",
+    "eslint": "^10.8.0",
+    "typescript-eslint": "^8.66.0",
     "webpack": "^5.105.4",
     "webpack-cli": "^7.0.2"
   },

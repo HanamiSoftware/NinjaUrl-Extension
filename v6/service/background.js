@@ -14,8 +14,10 @@ let isAuthenticated = false;
 // ======================
 // INIT
 // ======================
-chrome.action.onClicked.addListener((tab) => {
-    chrome.sidePanel.open({ tabId: tab.id });
+
+chrome.sidePanel.setPanelBehavior({
+
+    openPanelOnActionClick: true
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -47,10 +49,12 @@ function updateUrl(url) {
 }
 
 function normalize(url) {
-    if (!url && !(url.startsWith("https://") || url.startsWith("http://")){
+    if (!url && !(url.startsWith("https://") || url.startsWith("http://"))){
         return "This Page cannot be Shortened";
-    }
-    return url;
+    } 
+
+        return url;
+    
 }
 
 // ======================
@@ -135,7 +139,7 @@ async function deleteLink(id) {
 
         chrome.action.setBadgeText({ text: filtered.length ? String(filtered.length) : "" });
 
-        // Se hai un endpoint per eliminare lato server, scommenta e adatta:
+        // creare endpoint per l'eliminazione
         // const token = await getValidAccessToken();
         // if (token) {
         //     await fetch(`${API_BASE}/link/${id}`, {
@@ -155,21 +159,46 @@ async function handleShorten(longUrl) {
     try {
         const token = await getValidAccessToken();
 
+        const { ninja_guest_api_key } =
+            await chrome.storage.local.get("ninja_guest_api_key");
+
         const res = await fetch(`${API_BASE}/link/create`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {})
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...(ninja_guest_api_key
+                    ? { "x-api-key": ninja_guest_api_key }
+                    : {})
             },
-            body: JSON.stringify({ url: longUrl }),
+            body: JSON.stringify({
+                url: longUrl
+            })
         });
 
         const data = await res.json();
-        const slug = data?.data?.slug;
 
-        if (!slug) throw new Error("Invalid API");
+        if (!res.ok) {
+            throw new Error(data?.error ?? `HTTP ${res.status}`);
+        }
 
-        const short = "https://n2l.ink/" + slug;
+        const {
+            slug,
+            apiKey
+        } = data.data;
+
+        if (!slug) {
+            throw new Error("Invalid API response");
+        }
+
+        // Salva la guest api key solo la prima volta
+        if (!ninja_guest_api_key && apiKey) {
+            await chrome.storage.local.set({
+                ninja_guest_api_key: apiKey
+            });
+        }
+
+        const short = `https://n2l.ink/${slug}`;
 
         const links = await getLinks();
 
@@ -186,13 +215,22 @@ async function handleShorten(longUrl) {
 
         await chrome.storage.local.set({ links });
 
-        chrome.action.setBadgeText({ text: String(links.length) });
+        await chrome.action.setBadgeText({
+            text: String(links.length)
+        });
 
-        return { success: true, data: newItem };
+        return {
+            success: true,
+            data: newItem
+        };
 
-    } catch (e) {
-        console.error(e);
-        return { success: false };
+    } catch (err) {
+        console.error("handleShorten:", err);
+
+        return {
+            success: false,
+            error: err.message
+        };
     }
 }
 
@@ -332,8 +370,7 @@ async function exchangeCode(code, codeVerifier, redirectUri) {
 
     const tokens = JSON.parse(text);
 
-    // IMPORTANTE: expires_in Ã¨ una DURATA in secondi (es. 3600), non un timestamp.
-    // Salviamo anche un timestamp assoluto di scadenza per poterlo confrontare dopo.
+    
     tokens.expires_at = Math.floor(Date.now() / 1000) + tokens.expires_in;
 
     return tokens;
@@ -400,7 +437,7 @@ async function fetchUserProfile(accessToken) {
 
     const profile = await res.json();
 
-    // 2. Tier / dati di abbonamento dal tuo backend (Cloudflare Worker -> MySQL)
+    // 2. Tier / dati di abbonamento dal database
     let tier = "free";
     try {
         const meRes = await fetch(`${API_BASE}/user/me`, {

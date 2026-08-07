@@ -7,6 +7,8 @@ Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "NinjaUrl-Extension", "Ninja
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "NinjaURL.Workers", "..\NinjaURL.Project\Workers\NinjaURL.Workers.esproj", "{36ECABA5-B784-EBEF-149F-B23A5ABFB00E}"
 EndProject
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "ninja-platform-data", "..\ninja-platform-data\ninja-platform-data.esproj", "{0DFF8A10-8FBE-0469-AD91-DAEAA39439B4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,12 @@ Global
 		{36ECABA5-B784-EBEF-149F-B23A5ABFB00E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36ECABA5-B784-EBEF-149F-B23A5ABFB00E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{36ECABA5-B784-EBEF-149F-B23A5ABFB00E}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{0DFF8A10-8FBE-0469-AD91-DAEAA39439B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0DFF8A10-8FBE-0469-AD91-DAEAA39439B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0DFF8A10-8FBE-0469-AD91-DAEAA39439B4}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{0DFF8A10-8FBE-0469-AD91-DAEAA39439B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0DFF8A10-8FBE-0469-AD91-DAEAA39439B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0DFF8A10-8FBE-0469-AD91-DAEAA39439B4}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

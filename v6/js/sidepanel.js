@@ -233,7 +233,7 @@ async function setupEvents() {
                         renderLinks();
                     } else {
                         updateAuthUI();
-                        // facoltativo: mostra un messaggio di errore nell'UI
+                        
                     }
                 });
             }
