@@ -15,9 +15,10 @@ let isAuthenticated = false;
 // INIT
 // ======================
 
-chrome.sidePanel.setPanelBehavior({
-
-    openPanelOnActionClick: true
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (tab.active && changeInfo.url && !isAuthenticating) {
+        updateUrl(changeInfo.url);
+    }
 });
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -32,11 +33,12 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (tab.active && changeInfo.url && !isAuthenticating) {
-        updateUrl(changeInfo.url);
-    }
+
+chrome.sidePanel.setPanelBehavior({
+
+    openPanelOnActionClick: true
 });
+
 
 function updateUrl(url) {
 

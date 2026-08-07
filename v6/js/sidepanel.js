@@ -164,9 +164,10 @@ function renderLinks() {
                             <img src="../assets/ui-icons/icon-menu.svg">
                         </button>
                         <div class="dropdown-menu">
-                            <button data-action="dash">View in Dash</button>
-                            <button data-action="delete">Delete</button>
-                            <button data-action="share">Share</button>
+
+                        <button data-action="share">Share</button>
+                        <button data-action="delete" style="color: red;">Delete</button>
+                            
                         </div>
                     </div>
                 </div>
