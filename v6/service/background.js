@@ -116,7 +116,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 // ======================
-// LINKS
+// LINKS & USER MANAGEMENT
 // ======================
 async function getUser() {
     const res = await chrome.storage.local.get("user");
@@ -237,7 +237,7 @@ async function handleShorten(longUrl) {
 }
 
 // ======================
-// AUTHGEAR - PKCE
+// NINJACONNECT - PKCE
 // ======================
 const authSessions = new Map();
 
