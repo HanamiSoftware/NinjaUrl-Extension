@@ -1,24 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "NinjaUrl",
+  "name": "NinjaURL",
   "version": "1.0",
-  "action": {
-    "default_title": "NinjaUrl",
-    "default_icon": {
-      "16": "assets/icons/icon16.png",
-      "48": "assets/icons/icon48.png",
-      "128": "assets/icons/icon128.png"
-    }
-  },
+  //"action": {
+  //  "default_title": "",
+  //  "default_icon": {
+  //    "16": "assets/icons/icon16.png",
+  //    "48": "assets/icons/icon48.png",
+  //    "128": "assets/icons/icon128.png"
+  //  }
+  //},
   "background": {
     "service_worker": "service/background.js"
   },
   "host_permissions": [
     "https://ninjaurl.io/*",
     "https://api.ninjaurl.io/*",
-    "https://auth.ninjaurl.io/*",
     "https://n2l.ink/*",
-    "https://auth.ninjaconnect.io/*"
+    "https://auth.ninjaconnect.io/*",
+    "http://127.0.0.1:8787/*"
   ],
 
   "permissions": [
@@ -26,7 +26,8 @@
     "sidePanel",
     "identity",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "cookies"
   ],
   "side_panel": {
     "default_path": "panel/sidepanel.html"

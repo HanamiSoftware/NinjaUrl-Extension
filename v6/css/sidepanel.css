@@ -1,3 +1,9 @@
+@font-face {
+    font-family: "Atiba";
+    src: url('../assets/fonts/Atiba.ttf') format('truetype');
+    font-weight: normal;
+}
+
 :root {
     --color-bg: #f7f7f7;
     --color-surface: #ffffff;
@@ -39,13 +45,21 @@ body.app {
 .topbar {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: right;
     padding: var(--space-sm) var(--space-md);
     border-bottom: 1px solid var(--color-border);
+    flex-direction: column;
+    place-self: flex-end;
 }
 
 .topbar__logo {
     width: 26px;
+}
+
+.logo_title {
+    font-family: Atiba;
+    font-size: 24px;
+    letter-spacing: 2px;
 }
 
 .topbar__login {
@@ -224,8 +238,7 @@ body.app {
 .new-badge {
     position: absolute;
     top: -5px;
-    left: 0; 
-
+    left: 0;
     width: 40px;
     height: 26px;
     opacity: 1;
@@ -255,7 +268,7 @@ body.app {
     transition: all 0.15s ease;
     position: relative;
     margin-right: 12px;
-    overflow:visible;
+    overflow: visible;
 }
 
 

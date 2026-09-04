@@ -37,15 +37,17 @@ chrome.runtime.onMessage.addListener((msg) => {
 // ACTIVE TAB
 // ======================
 async function initActiveTab() {
-    chrome.runtime.sendMessage({ type: "GET_CURRENT_URL" }, (response) => {
+    const response = await chrome.runtime.sendMessage({
+        type: "GET_CURRENT_URL"
+    });
 
-        if (!response?.url || !isValidUrl(response.url)) {
-            activeTabUrl = "This Page cannot be Shortened";
-        } else {
-            activeTabUrl = response.url;
-        }
-        updateCurrentUrlUI();
-    })
+    if (!response?.url || !isValidUrl(response.url)) {
+        activeTabUrl = "This Page cannot be Shortened";
+    } else {
+        activeTabUrl = response.url;
+    }
+
+    updateCurrentUrlUI();
 }
 
 function isValidUrl(url) {
@@ -71,8 +73,32 @@ function updateCurrentUrlUI() {
 // USER / AUTH
 // ======================
 async function loadUser() {
-    const res = await chrome.runtime.sendMessage({ type: "GET_USER" });
-    currentUser = res || { tier: "anonymous" };
+    console.log("SIDEPANEL: loadUser()");
+    const user = await chrome.runtime.sendMessage({
+        type: "GET_USER"
+    });
+    console.log("SIDEPANEL: GET_USER response:", user);
+
+    if (user) {
+        console.log("SIDEPANEL: user found in storage");
+        currentUser = user;
+        updateAuthUI();
+        return;
+    }
+
+    console.log("SIDEPANEL: no cached user, requesting RESTORE_SESSION");
+    const restored = await chrome.runtime.sendMessage({
+        type: "RESTORE_SESSION"
+    });
+    console.log("SIDEPANEL: RESTORE_SESSION response:", restored);
+    if (restored?.authenticated && restored.user) {
+        console.log("SIDEPANEL: session restored");
+        currentUser = restored.user;
+    } else {
+        console.log("SIDEPANEL: no session ");
+        currentUser = { tier: "anonymous" };
+    }
+
     updateAuthUI();
 }
 
@@ -85,7 +111,7 @@ function updateAuthUI() {
     if (!authBtn || !profilePicture) return;
 
     if (isLoggedIn) {
-        profilePicture.src = currentUser.picture;
+        profilePicture.src = currentUser.pictureUrl;
         profilePicture.style.display = "block";
         profilePicture.style = "width:25px;height:25px;border-radius:25px";
 
@@ -102,6 +128,7 @@ function updateAuthUI() {
         authBtn.dataset.state = "anonymous";
     }
 }
+
 
 // ======================
 // LINKS

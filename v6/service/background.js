@@ -5,15 +5,16 @@ console.log("Background worker attivato");
 
 const AUTH_DOMAIN = "https://auth.ninjaconnect.io";
 const CLIENT_ID = "bc418ed1dc646a32";
-const API_BASE = "https://api.ninjaurl.io/v1";
+const API_BASE = "http://127.0.0.1:8787/v1";
 
 let currentUrl = "";
 let isAuthenticating = false;
-let isAuthenticated = false;
+let authenticated = false;
 
 // ======================
 // INIT
 // ======================
+initializeAuth();
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (tab.active && changeInfo.url && !isAuthenticating) {
@@ -51,12 +52,14 @@ function updateUrl(url) {
 }
 
 function normalize(url) {
-    if (!url && !(url.startsWith("https://") || url.startsWith("http://"))){
+    if (
+        typeof url !== "string" ||
+        (!url.startsWith("https://") && !url.startsWith("http://"))
+    ) {
         return "This Page cannot be Shortened";
-    } 
+    }
 
-        return url;
-    
+    return url;
 }
 
 // ======================
@@ -75,12 +78,52 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 
     if (msg.type === "GET_CURRENT_URL") {
-        sendResponse({ url: currentUrl });
-        return true;
+        chrome.tabs.query({
+        active: true,
+        currentWindow: true
+    }).then(([tab]) => {
+
+        const url = normalize(tab?.url);
+
+        currentUrl = url;
+
+        sendResponse({
+            url,
+            tabId: tab?.id ?? null
+        });
+
+    });
+
+    return true;
     }
 
     if (msg.type === "GET_USER") {
         getUser().then(sendResponse);
+        return true;
+    }
+
+    if (msg.type === "RESTORE_SESSION") {
+        console.log("BACKGROUND: RESTORE_SESSION received");
+        restoreSession()
+            .then((user) => {
+                console.log(
+                    "BACKGROUND: restoreSession result:",
+                    user
+                );
+                sendResponse({
+                    authenticated: !!user,
+                    user: user ?? null
+                });
+            })
+            .catch((err) => {
+                console.error("RESTORE_SESSION error:", err);
+
+                sendResponse({
+                    authenticated: false,
+                    user: null
+                });
+            });
+
         return true;
     }
 
@@ -113,6 +156,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         logout().then(sendResponse);
         return true;
     }
+
+
 });
 
 // ======================
@@ -120,7 +165,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // ======================
 async function getUser() {
     const res = await chrome.storage.local.get("user");
-    return res.user || { tier: "anonymous" };
+    return res.user || null;
 }
 
 async function getLinks() {
@@ -142,7 +187,7 @@ async function deleteLink(id) {
         chrome.action.setBadgeText({ text: filtered.length ? String(filtered.length) : "" });
 
         // creare endpoint per l'eliminazione
-        // const token = await getValidAccessToken();
+        // const token = await getValidAccessToken(); oppure un altro metodo che verifica lo stato dell'utente
         // if (token) {
         //     await fetch(`${API_BASE}/link/${id}`, {
         //         method: "DELETE",
@@ -159,7 +204,7 @@ async function deleteLink(id) {
 
 async function handleShorten(longUrl) {
     try {
-        const token = await getValidAccessToken();
+        //const token = await getValidAccessToken();
 
         const { ninja_guest_api_key } =
             await chrome.storage.local.get("ninja_guest_api_key");
@@ -168,7 +213,8 @@ async function handleShorten(longUrl) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+               // ...(token ? { Authorization: `Bearer ${token}` } : {}),// Aggiungi l'header x-api-key solo se la chiave esiste 
+//                ed inoltre non useremo piu' il token ma il cookie http only tramite credentials:'include'
                 ...(ninja_guest_api_key
                     ? { "x-api-key": ninja_guest_api_key }
                     : {})
@@ -239,7 +285,6 @@ async function handleShorten(longUrl) {
 // ======================
 // NINJACONNECT - PKCE
 // ======================
-const authSessions = new Map();
 
 async function generatePKCE() {
     const array = new Uint8Array(32);
@@ -270,12 +315,13 @@ async function login() {
     const { verifier, challenge } = await generatePKCE();
     const state = crypto.randomUUID();
 
-    authSessions.set(state, {
+    await chrome.storage.session.set({
+    [`oauth_${state}`]: {
         verifier,
-        challenge,
-        createdAt: Date.now(),
-        redirectUri
-    });
+        redirectUri,
+        createdAt: Date.now()
+    }
+});
 
     const authUrl =
         `${AUTH_DOMAIN}/oauth2/authorize` +
@@ -293,48 +339,49 @@ async function login() {
             { url: authUrl, interactive: true },
             async (responseUrl) => {
                 isAuthenticating = false;
-                if (chrome.runtime.lastError || !responseUrl) {
-                    authSessions.delete(state);
-                    return reject(chrome.runtime.lastError?.message || "Auth failed");
-                }
 
                 const url = new URL(responseUrl);
 
                 const code = url.searchParams.get("code");
+
                 const returnedState = url.searchParams.get("state");
-                const errorParam = url.searchParams.get("error");
-
-                if (errorParam) {
-                    authSessions.delete(returnedState);
-                    return reject(errorParam);
+                if (chrome.runtime.lastError || !responseUrl) {
+                    //eliminare la sessione oauth
+                    await chrome.storage.session.remove(`oauth_${returnedState}`);
+                    return reject(chrome.runtime.lastError?.message || "Auth failed");
                 }
 
-                const session = authSessions.get(returnedState);
+                
+                const storageKey = `oauth_${returnedState}`;
 
-                if (!session) {
-                    return reject("Invalid or expired auth session (state mismatch)");
-                }
+const result = await chrome.storage.session.get(storageKey);
 
-                authSessions.delete(returnedState);
+const session = result[storageKey];
 
-                if (!code) return reject("No code");
+if (!session) {
+    return reject(
+        "Invalid or expired auth session (state mismatch)"
+    );
+}
+                
 
                 try {
                     const tokens = await exchangeCode(
+
+                        state,
                         code,
                         session.verifier,
                         session.redirectUri
                     );
+await chrome.storage.session.remove(storageKey);
 
-                    await chrome.storage.local.set({ auth: tokens });
-
-                    // Recupera il profilo utente + tier di abbonamento
-                    const user = await fetchUserProfile(tokens.access_token);
+                    const user = await getCurrentUser();
+                    
 
                     await chrome.storage.local.set({ user });
 
-                    // Avvisa il sidepanel che l'utente ha fatto login/logout
-                    chrome.runtime.sendMessage({ type: "USER_UPDATED", user }).catch(() => { });
+                    //  Avvisa il sidepanel che l'utente ha fatto login/logout
+                     chrome.runtime.sendMessage({ type: "USER_UPDATED", user }).catch(() => { });
 
                     resolve(user);
 
@@ -346,120 +393,44 @@ async function login() {
     });
 }
 
-async function exchangeCode(code, codeVerifier, redirectUri) {
+async function exchangeCode(
 
-    const body = new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: CLIENT_ID,
-        code,
+    state,
+    code,
+    codeVerifier,
+    redirectUri
+) {
+
+    const body = {
+
+        state,
+        code: code,
+        code_verifier: codeVerifier,
         redirect_uri: redirectUri,
-        code_verifier: codeVerifier
-    });
-
-    const res = await fetch(`${AUTH_DOMAIN}/oauth2/token`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: body.toString()
-    });
-
-    const text = await res.text();
-
-    if (!res.ok) {
-        throw new Error(text);
-    }
-
-    const tokens = JSON.parse(text);
-
-    
-    tokens.expires_at = Math.floor(Date.now() / 1000) + tokens.expires_in;
-
-    return tokens;
-}
-
-async function refreshToken() {
-    const { auth } = await chrome.storage.local.get("auth");
-
-    if (!auth?.refresh_token) throw new Error("No refresh token");
-
-    const res = await fetch(`${AUTH_DOMAIN}/oauth2/token`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-            client_id: CLIENT_ID,
-            refresh_token: auth.refresh_token,
-            grant_type: "refresh_token"
-        }).toString()
-    });
-
-    if (!res.ok) throw new Error("Refresh failed");
-
-    const newTokens = await res.json();
-    newTokens.expires_at = Math.floor(Date.now() / 1000) + newTokens.expires_in;
-
-    const merged = { ...auth, ...newTokens };
-
-    await chrome.storage.local.set({ auth: merged });
-
-    return merged;
-}
-
-async function getValidAccessToken() {
-    const { auth } = await chrome.storage.local.get("auth");
-
-    if (!auth) return null;
-
-    const now = Math.floor(Date.now() / 1000);
-
-    // Rinnova se manca meno di 60s alla scadenza
-    if (!auth.expires_at || auth.expires_at - now < 60) {
-        try {
-            const refreshed = await refreshToken();
-            return refreshed.access_token;
-        } catch (e) {
-            console.error("Token refresh failed, logging out:", e);
-            await logout();
-            return null;
-        }
-    }
-
-    return auth.access_token;
-}
-
-async function fetchUserProfile(accessToken) {
-    // 1. Profilo base da Authgear (email, nome, sub id)
-    const res = await fetch(`${AUTH_DOMAIN}/oauth2/userinfo`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-    });
-
-    if (!res.ok) throw new Error("Failed to fetch userinfo from Authgear");
-
-    const profile = await res.json();
-
-    // 2. Tier / dati di abbonamento dal database
-    let tier = "free";
-    try {
-        const meRes = await fetch(`${API_BASE}/user/me`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        if (meRes.ok) {
-            const me = await meRes.json();
-            tier = me?.tier || "free";
-        }
-    } catch (e) {
-        console.warn("Could not fetch tier from backend, defaulting to 'free'", e);
-    }
-
-    return {
-        sub: profile.sub,
-        email: profile.email,
-        name: profile.given_name,
-        picture: profile.picture,
-        tier
+        client_id: CLIENT_ID
     };
+
+    const res = await fetch(
+        `${API_BASE}/exchange`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        }
+    );
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+        throw new Error(
+            result.error?.message ||
+            "Authentication exchange failed"
+        );
+    }
+
+    return result.data;
 }
 
 async function logout() {
@@ -485,3 +456,74 @@ async function logout() {
 
     return true;
 }
+
+function isAuthenticated() {
+    return authenticated;
+}
+
+async function getCurrentUser() {
+    const res = await fetch(`${API_BASE}/user/me`, {
+        method: "GET",
+        credentials: "include"
+    });
+    console.log("GET /user/me status:", res.status);
+
+    if (!res.ok) {
+        throw new Error(`Failed to get current user: ${res.status}`);
+    }
+
+    const result = await res.json();
+    //console.log("Results: ", result);
+    return result.data.user;
+}
+
+
+async function restoreSession() {
+
+    try {
+
+        const user = await getCurrentUser();
+
+        authenticated = true;
+
+        await chrome.storage.local.set({ user });
+
+        return user;
+
+    } catch (error) {
+
+        console.log("No active NinjaConnect session", error.message);
+
+        authenticated = false;
+
+        await chrome.storage.local.remove("user");
+
+        return null;
+    }
+}
+
+
+async function initializeAuth() {
+
+    const user = await restoreSession();
+
+    if (user) {
+
+        chrome.runtime.sendMessage({
+            type: "USER_UPDATED",
+            user
+        }).catch(() => { });
+
+        return;
+    }
+
+    const anonymousUser = {
+        tier: "anonymous"
+    };
+
+    chrome.runtime.sendMessage({
+        type: "USER_UPDATED",
+        user: anonymousUser
+    }).catch(() => { });
+}
+
