@@ -5,7 +5,7 @@ console.log("Background worker attivato");
 
 const AUTH_DOMAIN = "https://auth.ninjaconnect.io";
 const CLIENT_ID = "bc418ed1dc646a32";
-const API_BASE = "http://127.0.0.1:8787/v1";
+const API_BASE = "https://api.ninjaurl.io/v1";
 
 let currentUrl = "";
 let isAuthenticating = false;
