@@ -7,15 +7,18 @@ chrome.action.onClicked.addListener((tab) => {
     chrome.sidePanel.open({ tabId: tab.id });
 });
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    const tab = await chrome.tabs.get(activeInfo.tabId);
-    if (!tab.url)
-        return;
-    updateUrl(tab.url);
-});
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (tab.active && changeInfo.url) {
-        updateUrl(changeInfo.url);
+    try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+        if (tab.url)
+            updateUrl(tab.url);
     }
+    catch (error) {
+        console.error("Unable to read the active tab", error);
+    }
+});
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+    if (tab.active && changeInfo.url)
+        updateUrl(changeInfo.url);
 });
 function updateUrl(url) {
     currentUrl = normalize(url);
@@ -31,32 +34,46 @@ function normalize(url) {
     }
     return url;
 }
-chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (!isBackgroundMessage(msg))
+        return false;
     if (msg.type === "SHORTEN_URL") {
-        await handleShorten(msg.payload.url).then(sendResponse);
+        void handleShorten(msg.payload.url).then(sendResponse);
         return true;
     }
     if (msg.type === "GET_LINKS") {
-        getLinks().then(sendResponse);
+        void getLinks().then(sendResponse);
         return true;
     }
     if (msg.type === "GET_CURRENT_URL") {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            sendResponse({ url: currentUrl });
-        });
-        return true;
+        sendResponse({ url: currentUrl });
+        return false;
     }
     if (msg.type === "GET_USER") {
-        getUser().then(sendResponse);
+        void getUser().then(sendResponse);
         return true;
     }
-    if (msg.type === "DELETE_LINK") {
-        return;
-    }
-    if (msg.type === "GET_LINKS_NUMBER") {
-        countLinks().then(sendResponse);
-    }
+    if (msg.type === "DELETE_LINK")
+        return false;
+    void countLinks().then(sendResponse);
+    return true;
 });
+function isBackgroundMessage(message) {
+    if (!message || typeof message !== "object" || !("type" in message))
+        return false;
+    const type = message.type;
+    if (type !== "SHORTEN_URL")
+        return [
+            "GET_LINKS",
+            "GET_CURRENT_URL",
+            "GET_USER",
+            "DELETE_LINK",
+            "GET_LINKS_NUMBER",
+        ].includes(type);
+    if (!("payload" in message) || !message.payload || typeof message.payload !== "object")
+        return false;
+    return "url" in message.payload && typeof message.payload.url === "string";
+}
 async function getUser() {
     const res = await chrome.storage.local.get("user");
     return res.user || { tier: "anonymous" };
@@ -66,8 +83,7 @@ async function getLinks() {
     return res.links || [];
 }
 async function countLinks() {
-    const res = await chrome.storage.local.get("links");
-    return (res.links || []).length;
+    return (await getLinks()).length;
 }
 async function handleShorten(longUrl) {
     try {
@@ -76,27 +92,28 @@ async function handleShorten(longUrl) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: longUrl }),
         });
+        if (!res.ok)
+            throw new Error(`API request failed with status ${res.status}`);
         const data = await res.json();
-        const slug = data?.data?.slug;
+        const slug = data.data?.slug;
         if (!slug)
             throw new Error("Invalid API");
-        const short = "https://n2l.ink/" + slug;
         const links = await getLinks();
         const newItem = {
             id: crypto.randomUUID(),
             slug,
-            short,
+            short: `https://n2l.ink/${slug}`,
             long: longUrl,
             isNew: true,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
         links.unshift(newItem);
         await chrome.storage.local.set({ links });
         chrome.action.setBadgeText({ text: String(links.length) });
         return { success: true, data: newItem };
     }
-    catch (e) {
-        console.error(e);
+    catch (error) {
+        console.error(error);
         return { success: false };
     }
 }

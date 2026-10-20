@@ -11,8 +11,9 @@
     "webpack-cli": "^7.0.2"
   },
   "scripts": {
-    "build-dev": "webpack --mode development",
-    "build-prod": "webpack --mode production"
+    "build-dev": "node scripts/build-v7.mjs development",
+    "build-prod": "node scripts/build-v7.mjs production",
+    "verify-v7": "node scripts/verify-v7.mjs"
   },
   "name": "ninja-url-extension",
   "version": "1.0.0",

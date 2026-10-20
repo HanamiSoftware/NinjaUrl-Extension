@@ -2,11 +2,11 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
-    "outDir": "dist",
-    "rootDir": "src",
+    "outDir": "v7/dist",
+    "rootDir": "v7/src",
     "moduleResolution": "bundler",
     "strict": true,
     "types": ["chrome"]
   },
-  "include": [ "src" ]
+  "include": [ "v7/src/**/*.ts" ]
 }

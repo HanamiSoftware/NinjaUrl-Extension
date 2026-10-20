@@ -1,27 +1,28 @@
-import { LinkItem } from "../types/link";
+import type { BackgroundMessage, LinkItem, ShortenResponse, User } from "../types/link";
 
 console.log("TS Background worker attivato");
 
-
 let currentUrl = "";
+
 //init background worker
 chrome.action.onClicked.addListener((tab) => {
     if (!tab.id) return;
     chrome.sidePanel.open({ tabId: tab.id });
 });
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-    const tab = await chrome.tabs.get(activeInfo.tabId);
-    if (!tab.url) return;
-    updateUrl(tab.url);
-});
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (tab.active && changeInfo.url) {
-        updateUrl(changeInfo.url);
+    try {
+        const tab = await chrome.tabs.get(activeInfo.tabId);
+        if (tab.url) updateUrl(tab.url);
+    } catch (error) {
+        console.error("Unable to read the active tab", error);
     }
 });
 
-function updateUrl(url:string) {
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+    if (tab.active && changeInfo.url) updateUrl(changeInfo.url);
+});
+
+function updateUrl(url: string): void {
     currentUrl = normalize(url);
 
     // PROVA a notificare (ma senza rompere)
@@ -31,60 +32,78 @@ function updateUrl(url:string) {
     }).catch(() => { });
 }
 
-function normalize(url:string) {
+function normalize(url: string): string {
     if (!url || url.startsWith("chrome://") || url.startsWith("about:") || url.startsWith("edge://")) {
         return "This Page cannot be Shortened";
     }
     return url;
 }
-chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (!isBackgroundMessage(msg)) return false;
 
     if (msg.type === "SHORTEN_URL") {
-        await handleShorten(msg.payload.url).then(sendResponse);
+        void handleShorten(msg.payload.url).then(sendResponse);
         return true;
     }
 
     if (msg.type === "GET_LINKS") {
-        getLinks().then(sendResponse);
+        void getLinks().then(sendResponse);
         return true;
     }
 
     if (msg.type === "GET_CURRENT_URL") {
-
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-
-            sendResponse({ url: currentUrl });
-
-        });
-        return true;
+        sendResponse({ url: currentUrl });
+        return false;
     }
 
     if (msg.type === "GET_USER") {
-        getUser().then(sendResponse);
+        void getUser().then(sendResponse);
         return true;
     }
 
-    if (msg.type === "DELETE_LINK") { return; }
+    if (msg.type === "DELETE_LINK") return false;
 
-    if (msg.type === "GET_LINKS_NUMBER") {
-        countLinks().then(sendResponse);
-    }
+    void countLinks().then(sendResponse);
+    return true;
 });
 
-async function getUser() {
+function isBackgroundMessage(message: unknown): message is BackgroundMessage {
+    if (!message || typeof message !== "object" || !("type" in message)) return false;
+
+    const type = message.type;
+    if (type !== "SHORTEN_URL") return [
+        "GET_LINKS",
+        "GET_CURRENT_URL",
+        "GET_USER",
+        "DELETE_LINK",
+        "GET_LINKS_NUMBER",
+    ].includes(type as string);
+
+    if (!("payload" in message) || !message.payload || typeof message.payload !== "object") return false;
+    return "url" in message.payload && typeof message.payload.url === "string";
+}
+
+async function getUser(): Promise<User> {
     const res = await chrome.storage.local.get("user");
-    return res.user || { tier: "anonymous" };
+    return (res.user as User | undefined) || { tier: "anonymous" };
 }
 
 async function getLinks(): Promise<LinkItem[]> {
     const res = await chrome.storage.local.get("links");
-    return res.links as LinkItem[] || [];
+    return (res.links as LinkItem[] | undefined) || [];
 }
+
 async function countLinks(): Promise<number> {
-    const res = await chrome.storage.local.get("links");
-    return (res.links as LinkItem[] || []).length;
+    return (await getLinks()).length;
 }
-async function handleShorten(longUrl: string) {
+
+type CreateLinkResponse = {
+    data?: {
+        slug?: string;
+    };
+};
+
+async function handleShorten(longUrl: string): Promise<ShortenResponse> {
     try {
         const res = await fetch("https://api.ninjaurl.io/v1/link/create", {
             method: "POST",
@@ -92,34 +111,28 @@ async function handleShorten(longUrl: string) {
             body: JSON.stringify({ url: longUrl }),
         });
 
-        const data = await res.json();
-        const slug = data?.data?.slug;
+        if (!res.ok) throw new Error(`API request failed with status ${res.status}`);
 
+        const data = await res.json() as CreateLinkResponse;
+        const slug = data.data?.slug;
         if (!slug) throw new Error("Invalid API");
 
-        const short = "https://n2l.ink/" + slug;
-
         const links = await getLinks();
-
-        const newItem = {
+        const newItem: LinkItem = {
             id: crypto.randomUUID(),
             slug,
-            short,
+            short: `https://n2l.ink/${slug}`,
             long: longUrl,
             isNew: true,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
         };
 
         links.unshift(newItem);
-
         await chrome.storage.local.set({ links });
-
         chrome.action.setBadgeText({ text: String(links.length) });
-
         return { success: true, data: newItem };
-
-    } catch (e) {
-        console.error(e);
+    } catch (error) {
+        console.error(error);
         return { success: false };
     }
 }
