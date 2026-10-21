@@ -1,12 +1,12 @@
-﻿/* global chrome */
+/* global chrome */
 // @ts-nocheck
 
 console.log("Background worker attivato");
 
 const AUTH_DOMAIN = "https://auth.ninjaconnect.io";
 const CLIENT_ID = "bc418ed1dc646a32";
-const API_BASE = "https://api.ninjaurl.io/v1";
-
+const API_BASE = "http://127.0.0.1:8787/v1";
+const API_RESOURCE = "https://api.ninjaurl.io/v1";
 let currentUrl = "";
 let isAuthenticating = false;
 let authenticated = false;
@@ -328,10 +328,11 @@ async function login() {
         `?response_type=code` +
         `&client_id=${CLIENT_ID}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&scope=openid%20profile%20email%20offline_access` +
+        `&scope=openid%20profile%20email%20offline_access%20user.read` +
         `&code_challenge=${challenge}` +
         `&code_challenge_method=S256` +
-        `&state=${state}`;
+        `&state=${state}` +
+        `&resource=${encodeURIComponent(API_RESOURCE)}`
 
     return new Promise((resolve, reject) => {
         isAuthenticating = true;
@@ -434,22 +435,14 @@ async function exchangeCode(
 }
 
 async function logout() {
-    const { auth } = await chrome.storage.local.get("auth");
+    const { user } = await chrome.storage.local.get("user");
 
-    await chrome.storage.local.remove(["auth", "user"]);
-    chrome.action.setBadgeText({ text: "" });
-
+    await chrome.storage.local.remove("user");
     
-    if (auth?.refresh_token) {
-        fetch(`${AUTH_DOMAIN}/oauth2/revoke`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-                client_id: CLIENT_ID,
-                token: auth.refresh_token
-            }).toString()
-        }).catch(() => { });
-    }
+    await fetch(`${API_BASE}/logout`, {
+        method: "POST",
+        credentials: "include"
+    });
 
     const anonymousUser = { tier: "anonymous" };
     chrome.runtime.sendMessage({ type: "USER_UPDATED", user: anonymousUser }).catch(() => { });
