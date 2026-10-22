@@ -5,7 +5,9 @@ console.log("Background worker attivato");
 
 const AUTH_DOMAIN = "https://auth.ninjaconnect.io";
 const CLIENT_ID = "bc418ed1dc646a32";
-const API_BASE = "http://127.0.0.1:8787/v1";
+//const API_BASE = "http://127.0.0.1:8787/v1";
+
+const API_BASE = "https://api.ninjaurl.io/v1";
 const API_RESOURCE = "https://api.ninjaurl.io/v1";
 let currentUrl = "";
 let isAuthenticating = false;
@@ -263,9 +265,18 @@ async function handleShorten(longUrl) {
 
         await chrome.storage.local.set({ links });
 
-        await chrome.action.setBadgeText({
-            text: String(links.length)
+        chrome.action.setBadgeText({
+            text: links.length.toString()
         });
+
+
+        chrome.action.setBadgeBackgroundColor
+        ({
+
+            color: "#FF0000"
+
+         });
+         chrome.action.setBadgeTextColor({ color: "#FFFFFF" });
 
         return {
             success: true,

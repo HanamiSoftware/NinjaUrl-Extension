@@ -2,14 +2,14 @@
   "manifest_version": 3,
   "name": "NinjaURL",
   "version": "1.0",
-  //"action": {
-  //  "default_title": "",
-  //  "default_icon": {
-  //    "16": "assets/icons/icon16.png",
-  //    "48": "assets/icons/icon48.png",
-  //    "128": "assets/icons/icon128.png"
-  //  }
-  //},
+  "action": {
+    "default_title": "NinjaURL",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
   "background": {
     "service_worker": "service/background.js"
   },
@@ -27,7 +27,8 @@
     "identity",
     "tabs",
     "activeTab",
-    "cookies"
+    "cookies",
+    "notifications"
   ],
   "side_panel": {
     "default_path": "panel/sidepanel.html"
