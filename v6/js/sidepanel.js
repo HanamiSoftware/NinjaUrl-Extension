@@ -28,7 +28,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     }
     if (msg.type === "USER_UPDATED") {
         currentUser = msg.user || { tier: "anonymous" };
-        updateAuthUI();
+        updateAuthUI({ data: currentUser });
         renderLinks();
     }
 
@@ -258,7 +258,7 @@ async function setupEvents() {
                 authBtn.textContent = "Logging out...";
                 chrome.runtime.sendMessage({ type: "LOGOUT" }, (response) => {
                     currentUser = { tier: "anonymous" };
-                    updateAuthUI();
+                    updateAuthUI(response);
                     renderLinks();
                 });
             } else {

@@ -408,11 +408,12 @@ await chrome.storage.session.remove(storageKey);
                     const user = await getCurrentUser();
                     
 
-                    await chrome.storage.local.set({ user });
-					return user;
+			await chrome.storage.local.set({ user });
+			chrome.runtime.sendMessage({ type: "USER_UPDATED", user }).catch(() => { });
+			isAuthenticating = false;
+			return user;
                     //  Avvisa il sidepanel che l'utente ha fatto login
-                     chrome.runtime.sendMessage({ type: "USER_UPDATED", user}).catch(() => { });
-					 isAuthenticating = false;
+                    
                     
 
                 
@@ -478,7 +479,7 @@ async function logout() {
     });
 
     const anonymousUser = { tier: "anonymous" };
-    chrome.runtime.sendMessage({ type: "USER_UPDATED", user: anonymousUser }).catch(() => { });
+    chrome.runtime.sendMessage({ type: "USER_UPDATED", user }).catch(() => { });
 
     return true;
 }
