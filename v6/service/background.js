@@ -5,9 +5,9 @@ console.log("Background worker attivato");
 
 const AUTH_DOMAIN = "https://auth.ninjaconnect.io";
 const CLIENT_ID = "bc418ed1dc646a32";
-//const API_BASE = "http://127.0.0.1:8787/v1";
+const API_BASE = "http://127.0.0.1:8787/v1";
 
-const API_BASE = "https://api.ninjaurl.io/v1";
+//const API_BASE = "https://api.ninjaurl.io/v1";
 const API_RESOURCE = "https://api.ninjaurl.io/v1";
 let currentUrl = "";
 let isAuthenticating = false;
@@ -141,10 +141,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg.type === "LOGIN") {
         login()
-            .then(sendResponse)
+            .then((response) => {
+
+				console.log("LOGIN response:", response);
+                sendResponse({ success: true });
+            })
             .catch((err) => {
                 console.error("LOGIN error:", err);
-                sendResponse(null);
+                sendResponse({ success: false });
             });
         return true;
     }
@@ -321,6 +325,8 @@ function base64UrlEncode(buffer) {
 }
 
 async function login() {
+
+	isAuthenticating = true;
     const redirectUri = chrome.identity.getRedirectURL("auth");
 
     const { verifier, challenge } = await generatePKCE();
@@ -345,23 +351,33 @@ async function login() {
         `&state=${state}` +
         `&resource=${encodeURIComponent(API_RESOURCE)}`
 
-    return new Promise((resolve, reject) => {
-        isAuthenticating = true;
-        chrome.identity.launchWebAuthFlow(
-            { url: authUrl, interactive: true },
-            async (responseUrl) => {
-                isAuthenticating = false;
+    
+        
+
+		try{
+        const responseUrl= await chrome.identity.launchWebAuthFlow(
+            { url: authUrl, interactive: true });
+            
+                
+
+
+				if (chrome.runtime.lastError || !responseUrl) {
+
+					isAuthenticating = false;
+                    //eliminare la sessione oauth
+                    await chrome.storage.session.remove(`oauth_${returnedState}`);
+                    throw new Error("Authentication failed or was canceled");
+
+					return;
+                }
+
 
                 const url = new URL(responseUrl);
 
                 const code = url.searchParams.get("code");
 
                 const returnedState = url.searchParams.get("state");
-                if (chrome.runtime.lastError || !responseUrl) {
-                    //eliminare la sessione oauth
-                    await chrome.storage.session.remove(`oauth_${returnedState}`);
-                    return reject(chrome.runtime.lastError?.message || "Auth failed");
-                }
+                
 
                 
                 const storageKey = `oauth_${returnedState}`;
@@ -371,13 +387,15 @@ const result = await chrome.storage.session.get(storageKey);
 const session = result[storageKey];
 
 if (!session) {
-    return reject(
-        "Invalid or expired auth session (state mismatch)"
-    );
+
+	isAuthenticating = false;
+    throw new Error("Session not found for state: " + returnedState);
+
+	return;
 }
                 
 
-                try {
+                
                     const tokens = await exchangeCode(
 
                         state,
@@ -391,19 +409,23 @@ await chrome.storage.session.remove(storageKey);
                     
 
                     await chrome.storage.local.set({ user });
+					return user;
+                    //  Avvisa il sidepanel che l'utente ha fatto login
+                     chrome.runtime.sendMessage({ type: "USER_UPDATED", user}).catch(() => { });
+					 isAuthenticating = false;
+                    
 
-                    //  Avvisa il sidepanel che l'utente ha fatto login/logout
-                     chrome.runtime.sendMessage({ type: "USER_UPDATED", user }).catch(() => { });
+                
+            }catch(e){
+				chrome.runtime.sendMessage({ type: "LOGIN_CANCELED", user: null, error: e.message }).catch(() => { });
+				isAuthenticating = false;
+				throw new Error("Authentication failed: " + e.message);
 
-                    resolve(user);
+				return;
+			}
 
-                } catch (e) {
-                    reject(e);
-                }
-            }
-        );
-    });
-}
+		}
+
 
 async function exchangeCode(
 

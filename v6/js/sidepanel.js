@@ -1,4 +1,4 @@
-﻿// ======================
+// ======================
 // STATE
 // ======================
 let activeTabUrl = "";
@@ -29,6 +29,16 @@ chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === "USER_UPDATED") {
         currentUser = msg.user || { tier: "anonymous" };
         updateAuthUI();
+        renderLinks();
+    }
+
+	if (msg.type === "LOGIN_CANCELED") {
+        updateAuthUI({ data: currentUser, error: msg.error });
+        renderLinks();
+    }
+
+	if (msg.type === "LOGIN_ERROR") {
+        updateAuthUI({ data: currentUser, error: msg.error });
         renderLinks();
     }
 });
@@ -82,7 +92,7 @@ async function loadUser() {
     if (user) {
         console.log("SIDEPANEL: user found in storage");
         currentUser = user;
-        updateAuthUI();
+        updateAuthUI({ data: currentUser });
         return;
     }
 
@@ -99,10 +109,10 @@ async function loadUser() {
         currentUser = { tier: "anonymous" };
     }
 
-    updateAuthUI();
+    updateAuthUI({ data: currentUser });
 }
 
-function updateAuthUI() {
+function updateAuthUI(response) {
 
     const isLoggedIn = currentUser.tier !== "anonymous";
     const authBtn = document.getElementById("loginBtn");
@@ -111,11 +121,11 @@ function updateAuthUI() {
     if (!authBtn || !profilePicture) return;
 
     if (isLoggedIn) {
-        profilePicture.src = currentUser.pictureUrl;
+        profilePicture.src = response.data.pictureUrl;
         profilePicture.style.display = "block";
         profilePicture.style = "width:25px;height:25px;border-radius:25px";
 
-        authBtn.textContent = `Ciao, ${currentUser.name}`;
+        authBtn.textContent = `Ciao, ${response.data.name}`;
         authBtn.style = "vertical-align:super";
         authBtn.dataset.state = "logged-in";
 
@@ -246,7 +256,7 @@ async function setupEvents() {
             if (authBtn.dataset.state === "logged-in") {
                 // LOGOUT
                 authBtn.textContent = "Logging out...";
-                chrome.runtime.sendMessage({ type: "LOGOUT" }, () => {
+                chrome.runtime.sendMessage({ type: "LOGOUT" }, (response) => {
                     currentUser = { tier: "anonymous" };
                     updateAuthUI();
                     renderLinks();
@@ -254,15 +264,12 @@ async function setupEvents() {
             } else {
                 // LOGIN
                 authBtn.textContent = "Logging in...";
-                chrome.runtime.sendMessage({ type: "LOGIN" }, (user) => {
-                    if (user) {
-                        currentUser = user;
-                        updateAuthUI();
-                        renderLinks();
-                    } else {
-                        updateAuthUI();
-                        
-                    }
+                chrome.runtime.sendMessage({ type: "LOGIN" }, (response) => {
+                    if(chrome.runtime.lastError || !response.success) {
+                        authBtn.textContent = "Login Failed";
+                    } 
+					updateAuthUI(response);
+					renderLinks();
                 });
             }
             return;
