@@ -98,8 +98,21 @@ async function loadUser() {
 
     console.log("SIDEPANEL: no cached user, requesting RESTORE_SESSION");
     const restored = await chrome.runtime.sendMessage({
-        type: "RESTORE_SESSION"
-    });
+		type: "RESTORE_SESSION",
+		user: currentUser
+	});
+
+	if (restored.success && restored.authenticated) {
+		currentUser = restored.user;
+	} else if (restored.success && !restored.authenticated) {
+		currentUser = null;
+	} else {
+		console.error("SIDEPANEL: RESTORE_SESSION failed", restored.error);
+		currentUser = null;
+	}
+
+	updateAuthUI({ data: currentUser });
+
     console.log("SIDEPANEL: RESTORE_SESSION response:", restored);
     if (restored?.authenticated && restored.user) {
         console.log("SIDEPANEL: session restored");
@@ -114,7 +127,7 @@ async function loadUser() {
 
 function updateAuthUI(response) {
 
-    const isLoggedIn = currentUser.tier !== "anonymous";
+	const isLoggedIn = response.data.authenticated;
     const authBtn = document.getElementById("loginBtn");
     const profilePicture = document.getElementById("profile_picture");
 
