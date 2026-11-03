@@ -385,16 +385,29 @@ async function login() {
 }
 
 async function restoreSession() {
-	try {
-		const session = await getNinjaAuth().getSession();
-		await saveSession(session);
-		return session;
-	} catch (error) {
-		// A lookup failure is not an anonymous session. Keep the cached user
-		// untouched so temporary network/Worker failures do not erase identity.
-		console.error("Session restoration failed:", error);
-		throw error;
-	}
+    try {
+        const user = await getUser();
+
+        if (user) {
+            return {
+                authenticated: true,
+                user,
+                session: null
+            };
+        }
+
+        const session = await getNinjaAuth().getSession();
+
+        if (session?.authenticated && session.user) {
+            await saveSession(session);
+        }
+
+        return session;
+
+    } catch (error) {
+        console.error("[Background] Session restore failed:", error);
+        throw error;
+    }
 }
 
 async function logout() {
