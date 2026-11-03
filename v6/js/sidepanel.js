@@ -2,6 +2,11 @@
 // STATE
 // ======================
 let activeTabUrl = "";
+let currentSession = {
+    authenticated: false,
+    user: null,
+    session: null
+};
 let currentUser = { tier: "anonymous" };
 let allLinks = [];
 let showAll = false;
@@ -27,18 +32,18 @@ chrome.runtime.onMessage.addListener((msg) => {
         updateCurrentUrlUI();
     }
     if (msg.type === "USER_UPDATED") {
-        currentUser = msg.user || { tier: "anonymous" };
-        updateAuthUI({ data: currentUser });
+        currentSession = msg.data || {
+            authenticated: false,
+            user: null,
+            session: null
+        };
+        currentUser = currentSession.user || { tier: "anonymous" };
+        updateAuthUI({ data: currentSession });
         renderLinks();
     }
 
-	if (msg.type === "LOGIN_CANCELED") {
-        updateAuthUI({ data: currentUser, error: msg.error });
-        renderLinks();
-    }
-
-	if (msg.type === "LOGIN_ERROR") {
-        updateAuthUI({ data: currentUser, error: msg.error });
+	if (msg.type === "LOGIN_CANCELED" || msg.type === "LOGIN_ERROR") {
+        updateAuthUI({ data: currentSession, error: msg.error });
         renderLinks();
     }
 });
@@ -83,75 +88,56 @@ function updateCurrentUrlUI() {
 // USER / AUTH
 // ======================
 async function loadUser() {
-    console.log("SIDEPANEL: loadUser()");
-    const user = await chrome.runtime.sendMessage({
-        type: "GET_USER"
+    const restored = await chrome.runtime.sendMessage({
+        type: "RESTORE_SESSION"
     });
-    console.log("SIDEPANEL: GET_USER response:", user);
 
-    if (user) {
-        console.log("SIDEPANEL: user found in storage");
-        currentUser = user;
-        updateAuthUI({ data: currentUser });
+    if (!restored?.success || !restored.data) {
+        console.error("SIDEPANEL: RESTORE_SESSION failed", restored?.error);
+        updateAuthUI({ data: currentSession, error: restored?.error });
         return;
     }
 
-    console.log("SIDEPANEL: no cached user, requesting RESTORE_SESSION");
-    const restored = await chrome.runtime.sendMessage({
-		type: "RESTORE_SESSION",
-		user: currentUser
-	});
-
-	if (restored.success && restored.authenticated) {
-		currentUser = restored.user;
-	} else if (restored.success && !restored.authenticated) {
-		currentUser = null;
-	} else {
-		console.error("SIDEPANEL: RESTORE_SESSION failed", restored.error);
-		currentUser = null;
-	}
-
-	updateAuthUI({ data: currentUser });
-
-    console.log("SIDEPANEL: RESTORE_SESSION response:", restored);
-    if (restored?.authenticated && restored.user) {
-        console.log("SIDEPANEL: session restored");
-        currentUser = restored.user;
-    } else {
-        console.log("SIDEPANEL: no session ");
-        currentUser = { tier: "anonymous" };
-    }
-
-    updateAuthUI({ data: currentUser });
+    currentSession = restored.data;
+    currentUser = currentSession.user || { tier: "anonymous" };
+    updateAuthUI({ data: currentSession });
 }
 
 function updateAuthUI(response) {
-
-	const isLoggedIn = response.data.authenticated;
+    const session = response?.data || {
+        authenticated: false,
+        user: null,
+        session: null
+    };
+    const user = session.user;
+    const isLoggedIn = session.authenticated === true;
     const authBtn = document.getElementById("loginBtn");
     const profilePicture = document.getElementById("profile_picture");
 
     if (!authBtn || !profilePicture) return;
 
-    if (isLoggedIn) {
-        profilePicture.src = response.data.pictureUrl;
-        profilePicture.style.display = "block";
-        profilePicture.style = "width:25px;height:25px;border-radius:25px";
+    if (isLoggedIn && user) {
+        if (user.pictureUrl) {
+            profilePicture.src = user.pictureUrl;
+            profilePicture.style.display = "block";
+            profilePicture.style.width = "25px";
+            profilePicture.style.height = "25px";
+            profilePicture.style.borderRadius = "25px";
+        } else {
+            profilePicture.style.display = "none";
+            profilePicture.removeAttribute("src");
+        }
 
-        authBtn.textContent = `Ciao, ${response.data.name}`;
-        authBtn.style = "vertical-align:super";
+        authBtn.textContent = user.name ? `Ciao, ${user.name}` : "Account";
+        authBtn.style.verticalAlign = "super";
         authBtn.dataset.state = "logged-in";
-
     } else {
-
         profilePicture.style.display = "none";
-        profilePicture.src = "";
-
+        profilePicture.removeAttribute("src");
         authBtn.textContent = "Login";
         authBtn.dataset.state = "anonymous";
     }
 }
-
 
 // ======================
 // LINKS
@@ -267,22 +253,32 @@ async function setupEvents() {
         const authBtn = e.target.closest("#loginBtn");
         if (authBtn) {
             if (authBtn.dataset.state === "logged-in") {
-                // LOGOUT
                 authBtn.textContent = "Logging out...";
                 chrome.runtime.sendMessage({ type: "LOGOUT" }, (response) => {
-                    currentUser = { tier: "anonymous" };
+                    if (chrome.runtime.lastError || !response?.success) {
+                        authBtn.textContent = "Logout Failed";
+                        updateAuthUI({ data: currentSession });
+                        return;
+                    }
+
+                    currentSession = response.data;
+                    currentUser = currentSession.user || { tier: "anonymous" };
                     updateAuthUI(response);
                     renderLinks();
                 });
             } else {
-                // LOGIN
                 authBtn.textContent = "Logging in...";
                 chrome.runtime.sendMessage({ type: "LOGIN" }, (response) => {
-                    if(chrome.runtime.lastError || !response.success) {
+                    if (chrome.runtime.lastError || !response?.success) {
                         authBtn.textContent = "Login Failed";
-                    } 
-					updateAuthUI(response);
-					renderLinks();
+                        updateAuthUI({ data: currentSession });
+                        return;
+                    }
+
+                    currentSession = response.data;
+                    currentUser = currentSession.user || { tier: "anonymous" };
+                    updateAuthUI(response);
+                    renderLinks();
                 });
             }
             return;

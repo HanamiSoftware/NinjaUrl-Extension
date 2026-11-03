@@ -1,17 +1,17 @@
 /* global chrome */
 // @ts-nocheck
 
+importScripts("../libs/ninja-auth.iife.js");
+
 console.log("Background worker attivato");
 
-const AUTH_DOMAIN = "https://auth.ninjaconnect.io";
 const CLIENT_ID = "bc418ed1dc646a32";
+const AUTH_ENVIRONMENT = "development";
 const API_BASE = "http://127.0.0.1:8787/v1";
 
-//const API_BASE = "https://api.ninjaurl.io/v1";
-const API_RESOURCE = "https://api.ninjaurl.io/v1";
 let currentUrl = "";
 let isAuthenticating = false;
-let authenticated = false;
+let ninjaAuthInitialized = false;
 
 // ======================
 // INIT
@@ -106,11 +106,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 	if (msg.type === "RESTORE_SESSION") {
 		restoreSession()
-			.then((user) => {
+			.then((session) => {
 				sendResponse({
 					success: true,
-					authenticated: !!user,
-					user: user ?? null
+					authenticated: session.authenticated,
+					user: session.user,
+					session: session.session,
+					data: session
 				});
 			})
 			.catch((err) => {
@@ -140,25 +142,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 	if (msg.type === "LOGIN") {
 		login()
-			.then((response) => {
-
-				console.log("LOGIN response:", response);
-				sendResponse({ success: true });
+			.then((session) => {
+				sendResponse({ success: true, data: session });
 			})
 			.catch((err) => {
 				console.error("LOGIN error:", err);
-				sendResponse({ success: false });
+				sendResponse({
+					success: false,
+					error: { code: err.code || "LOGIN_ERROR", message: err.message }
+				});
 			});
 		return true;
 	}
 
-	if (msg.type === "GET_TOKEN") {
-		getValidAccessToken().then(sendResponse);
-		return true;
-	}
-
 	if (msg.type === "LOGOUT") {
-		logout().then(sendResponse);
+		logout()
+			.then((session) => {
+				sendResponse({ success: true, data: session });
+			})
+			.catch((err) => {
+				sendResponse({
+					success: false,
+					error: { code: err.code || "LOGOUT_ERROR", message: err.message }
+				});
+			});
 		return true;
 	}
 
@@ -297,303 +304,114 @@ async function handleShorten(longUrl) {
 }
 
 // ======================
-// NINJACONNECT - PKCE
+/* NinjaAuth integration */
 // ======================
 
-async function generatePKCE() {
-	const array = new Uint8Array(32);
-	crypto.getRandomValues(array);
-
-	const verifier = base64UrlEncode(array);
-
-	const digest = await crypto.subtle.digest(
-		"SHA-256",
-		new TextEncoder().encode(verifier)
-	);
-
-	const challenge = base64UrlEncode(new Uint8Array(digest));
-
-	return { verifier, challenge };
-}
-
-function base64UrlEncode(buffer) {
-	return btoa(String.fromCharCode(...buffer))
-		.replace(/\+/g, "-")
-		.replace(/\//g, "_")
-		.replace(/=+$/, "");
-}
-
-async function login() {
-
-	isAuthenticating = true;
-	const redirectUri = chrome.identity.getRedirectURL("auth");
-
-	const { verifier, challenge } = await generatePKCE();
-	const state = crypto.randomUUID();
-
-	await chrome.storage.session.set({
-		[`oauth_${state}`]: {
-			verifier,
-			redirectUri,
-			createdAt: Date.now()
-		}
-	});
-
-	const authUrl =
-		`${AUTH_DOMAIN}/oauth2/authorize` +
-		`?response_type=code` +
-		`&client_id=${CLIENT_ID}` +
-		`&redirect_uri=${encodeURIComponent(redirectUri)}` +
-		`&scope=openid%20profile%20email%20offline_access%20user.read` +
-		`&code_challenge=${challenge}` +
-		`&code_challenge_method=S256` +
-		`&state=${state}` +
-		`&resource=${encodeURIComponent(API_RESOURCE)}`
-
-
-
-
-	try {
-		const responseUrl = await chrome.identity.launchWebAuthFlow(
-			{ url: authUrl, interactive: true });
-
-
-
-
-		if (chrome.runtime.lastError || !responseUrl) {
-
-			isAuthenticating = false;
-
-			throw new Error("Authentication failed or was canceled");
-
-			return;
-		}
-
-
-		const url = new URL(responseUrl);
-
-		const code = url.searchParams.get("code");
-
-		const returnedState = url.searchParams.get("state");
-
-
-
-		const storageKey = `oauth_${returnedState}`;
-
-		const result = await chrome.storage.session.get(storageKey);
-
-		const session = result[storageKey];
-
-		if (!session) {
-
-			isAuthenticating = false;
-			throw new Error("Session not found or state mismatch: " + returnedState);
-
-			return;
-		}
-
-
-
-		const tokens = await exchangeCode(
-
-			state,
-			code,
-			session.verifier,
-			session.redirectUri
-		);
-
-
-		const user = await getSession();
-
-
-		await chrome.storage.local.set({ user });
-		chrome.runtime.sendMessage({ type: "USER_UPDATED", user }).catch(() => { });
-		isAuthenticating = false;
-		return user;
-		//  Avvisa il sidepanel che l'utente ha fatto login
-
-
-
-
-	} catch (e) {
-		chrome.runtime.sendMessage({ type: "LOGIN_CANCELED", user: null, error: e.message }).catch(() => { });
-		isAuthenticating = false;
-		throw new Error("Authentication failed: " + e.message);
-		return;
-
-	} finally {
-
-		//eliminare la sessione oauth
-		await chrome.storage.session.remove(`oauth_${returnedState}`);
+function getNinjaAuth() {
+	if (!globalThis.NinjaConnect?.NinjaAuth) {
+		throw new Error("NinjaAuth SDK bundle is not available in the Background worker.");
 	}
 
-}
-
-
-async function exchangeCode(
-
-	state,
-	code,
-	codeVerifier,
-	redirectUri
-) {
-
-	const body = {
-
-		state,
-		code: code,
-		code_verifier: codeVerifier,
-		redirect_uri: redirectUri,
-		client_id: CLIENT_ID
-	};
-
-	const res = await fetch(
-		`${API_BASE}/exchange`,
-		{
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json"
-			},
-			body: JSON.stringify(body)
-		}
-	);
-
-	const result = await res.json();
-
-	if (!res.ok || !result.success) {
-		throw new Error(
-			result.error?.message ||
-			"Authentication exchange failed"
-		);
-	}
-
-	return result.data;
-}
-
-async function logout() {
-	const { user } = await chrome.storage.local.get("user");
-
-	await chrome.storage.local.remove("user");
-
-	await fetch(`${API_BASE}/logout`, {
-		method: "POST",
-		credentials: "include"
-	});
-
-	const anonymousUser = { tier: "anonymous" };
-	chrome.runtime.sendMessage({ type: "USER_UPDATED", user }).catch(() => { });
-
-	return true;
-}
-
-function isAuthenticated() {
-	return authenticated;
-}
-
-
-async function getSession() {
-	const res = await fetch(`${API_BASE}/session`, {
-		method: "GET",
-		credentials: "include",
-		headers: {
-			"Accept": "application/json"
-		}
-	});
-
-	let result;
-
-	try {
-		result = await res.json();
-	} catch {
-		throw new Error("Invalid JSON response from session endpoint");
-	}
-
-	if (!res.ok || !result.success) {
-		const error = new Error(
-			result.message ||
-			result.error?.message ||
-			`Session request failed: HTTP ${res.status}`
-		);
-
-		error.code = result.error?.code || "SESSION_REQUEST_FAILED";
-		error.status = res.status;
-
-		throw error;
-	}
-
-	const data = result.data;
-
-	if (
-		!data ||
-		typeof data.authenticated !== "boolean"
-	) {
-		console.error("Invalid session response structure");
-	}
-
-	if (data.authenticated && !data.user) {
-		console.error("Authenticated session without user");
-	}
-
-	return {
-		authenticated: data.authenticated,
-		user: data.user || null,
-		session: data.session || null
-	};
-}
-
-
-
-
-async function restoreSession() {
-	try {
-		const session = await getSession();
-
-		authenticated = session.authenticated;
-
-		if (!session.authenticated) {
-			await chrome.storage.local.remove("user");
-			return null;
-		}
-
-		await chrome.storage.local.set({
-			user: session.user
+	if (!ninjaAuthInitialized) {
+		globalThis.NinjaConnect.NinjaAuth.init({
+			clientId: CLIENT_ID,
+			redirectUri: chrome.identity.getRedirectURL("auth"),
+			platform: "extension",
+			environment: AUTH_ENVIRONMENT
 		});
+		ninjaAuthInitialized = true;
+	}
 
-		return session.user;
+	return globalThis.NinjaConnect.NinjaAuth;
+}
 
-	} catch (error) {
-		console.error("Session restoration failed:", error);
+function anonymousSession() {
+	return {
+		authenticated: false,
+		user: null,
+		session: null
+	};
+}
 
-		// Non cancelliamo la cache in caso di errore temporaneo.
-		authenticated = false;
-
-		throw error;
+async function saveSession(session) {
+	if (session.authenticated && session.user) {
+		await chrome.storage.local.set({ user: session.user });
+	} else {
+		await chrome.storage.local.remove("user");
 	}
 }
 
-
-
-async function initializeAuth() {
-
-	const user = await restoreSession();
-
-	if (user) {
-
-		chrome.runtime.sendMessage({
-			type: "USER_UPDATED",
-			user
-		}).catch(() => { });
-
-		return;
-	}
-
-	const anonymousUser = {
-		tier: "anonymous"
-	};
-
+function notifySessionUpdate(session) {
 	chrome.runtime.sendMessage({
 		type: "USER_UPDATED",
-		user: anonymousUser
+		data: session
 	}).catch(() => { });
 }
 
+async function login() {
+	isAuthenticating = true;
+
+	try {
+		const auth = getNinjaAuth();
+		await auth.login();
+		const session = await auth.getSession();
+
+		if (!session.authenticated || !session.user) {
+			throw new Error("NinjaAuth login completed without an authenticated session.");
+		}
+
+		await saveSession(session);
+		notifySessionUpdate(session);
+		return session;
+	} catch (error) {
+		const messageType =
+			error?.code === "OAUTH_DENIED" ||
+			error?.code === "AUTHORIZATION_FAILED"
+				? "LOGIN_CANCELED"
+				: "LOGIN_ERROR";
+
+		chrome.runtime.sendMessage({
+			type: messageType,
+			error: {
+				code: error?.code || "LOGIN_ERROR",
+				message: error?.message || "Authentication failed."
+			}
+		}).catch(() => { });
+
+		throw error;
+	} finally {
+		isAuthenticating = false;
+	}
+}
+
+async function restoreSession() {
+	try {
+		const session = await getNinjaAuth().getSession();
+		await saveSession(session);
+		return session;
+	} catch (error) {
+		// A lookup failure is not an anonymous session. Keep the cached user
+		// untouched so temporary network/Worker failures do not erase identity.
+		console.error("Session restoration failed:", error);
+		throw error;
+	}
+}
+
+async function logout() {
+	const auth = getNinjaAuth();
+	await auth.logout();
+
+	const session = anonymousSession();
+	await saveSession(session);
+	notifySessionUpdate(session);
+	return session;
+}
+
+async function initializeAuth() {
+	try {
+		const session = await restoreSession();
+		notifySessionUpdate(session);
+	} catch (error) {
+		console.error("NinjaAuth initialization could not resolve the session:", error);
+	}
+}
