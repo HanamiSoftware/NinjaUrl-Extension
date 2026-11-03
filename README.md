@@ -1,139 +1,51 @@
-﻿# NinjaURL — Smart NinjaLinks for Builders
+# NinjaURL — Smart NinjaLinks for Builders
 
-## Stop using dumb links.
+## Stop using dumb links
 
-You’re still sharing static URLs in a dynamic world.
-They don’t adapt. They don’t optimize. They don’t learn.
+NinjaURL turns ordinary URLs into short, programmable links, with a Chrome Extension designed for fast workflows.
 
-**NinjaURL turns every link into a programmable, intelligent asset.**
+## What it does
 
----
-
-## What it does (today)
-
-### Instant Link Creation
-
-* Generate short links in milliseconds (`n2l.ink/slug`)
-* Custom slugs
-* Built for speed (API-first, no UI lag)
+### Link creation
+- Generate short links through the NinjaURL API.
+- Create and manage links from the browser.
+- Keep recent links available in the Extension interface.
 
 ### Chrome Extension
+- One-click shortening from the active tab.
+- Side Panel interface for account state and recent links.
+- Background Service Worker coordinates API requests and authentication.
 
-* One-click shortening from any tab
-* Zero context switching
-* Built for real workflows, not demos
+### Centralized authentication with NinjaAuth
+- The Extension delegates login, session lookup, and logout to the NinjaAuth SDK.
+- Ninja Connect owns shared identity and the server-side session.
+- The Background Service Worker adapts SDK results to Chrome runtime messages.
+- The Side Panel remains a UI client; it does not implement OAuth or own the authentication protocol.
+- The session cookie is HttpOnly. The Extension must not read or persist the raw session secret.
 
-### Dev-Friendly Auth
+## Current authentication integration status
 
-* OAuth2 (PKCE)
-* Works across web + extension
-* Designed for multi-app ecosystems
+- NinjaAuth integration is present on the remote master branch (commit 9606469a3f6412c5d47c9ee83c38b359499e1e8d).
+- A cache-first session-restore optimization is present on the remote dev branch, two commits ahead of master as reviewed on 3 November 2026.
+- In the cache-first path, a cached user restores the UI with session null and avoids an immediate /v1/session request. This cached state is not proof of a live authenticated session; protected operations must verify the session with NinjaAuth.
+- Extension build, Chrome functional tests, and live cookie/CORS end-to-end verification remain open.
+- NinjaAuth v1.0.1-beta is the internal milestone name; the SDK package metadata is still 0.1.0 and no public beta package is claimed.
 
-### Clean, scalable backend
+See [NinjaAuth Extension Integration](docs/NINJAAUTH-INTEGRATION.md) for the runtime contract and verification checklist.
 
-* API-first architecture
-* Built to evolve (not a dead-end shortener)
+## Architecture principles
 
----
+- Ninja Connect owns shared identity and central session lifecycle.
+- NinjaAuth owns the client-side authentication flow.
+- NinjaURL owns its product profile, capabilities, links, and business rules.
+- Authentication and application authorization remain separate.
 
-## Why it’s different
+## What's coming
 
-Most link shorteners are **finished products**.
+- Expanded public API and developer workflows.
+- More advanced link behavior and analytics.
+- Further SDK and ecosystem integrations.
 
-NinjaURL is an **evolving system**.
+## Project status
 
-It’s being built from day one to support:
-
-* automation
-* intelligence
-* developer workflows
-
----
-
-## What’s coming (soon)
-
-### Smart Links
-
-Links that adapt based on:
-
-* device
-* location
-* time
-* user behavior
-
-Same URL → different destination.
-
----
-
-### NinjaBOT
-
-Give it a raw URL → get:
-
-* optimized link
-* generated metadata
-* smart routing logic
-
-Future: prompt → link
-
----
-
-### Real Analytics
-
-Not just clicks:
-
-* behavior patterns
-* insights
-* suggestions
-
----
-
-### Advanced QR Engine
-
-* Fully styled QR codes
-* Logo embedding
-* High-quality export
-* Custom engine (not another wrapper)
-
----
-
-### Dev Ecosystem
-
-* Public API expansion
-* Webhooks
-* Automation hooks
-* SDKs (planned)
-
----
-
-## Who this is for
-
-* Indie hackers
-* SaaS builders
-* Devs who automate everything
-* People tired of glueing 5 tools together
-
----
-
-## Current status
-
-MVP is working.
-Actively building and refining.
-
-No public landing page yet — focusing on shipping fast and not releasing something half-baked.
-
----
-
-## Want early access?
-
-Drop a comment or DM me.
-I’ll let in a small group of early users first.
-
----
-
-## Final thought
-
-Links are one of the most primitive parts of the web.
-
-They shouldn’t be.
-
----
+The MVP is under active development. The priority is to verify the authentication lifecycle, Extension build, and API behavior before declaring a public release.
