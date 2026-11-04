@@ -25,11 +25,9 @@ NinjaURL turns ordinary URLs into short, programmable links, with a Chrome Exten
 
 ## Current authentication integration status
 
-- NinjaAuth integration is present on the remote master branch (commit 9606469a3f6412c5d47c9ee83c38b359499e1e8d).
-- A cache-first session-restore optimization is present on the remote dev branch, two commits ahead of master as reviewed on 3 November 2026.
+- NinjaAuth integration and cache-first session restoration are present on both `dev` and `master`; the reviewed Background source file has identical content on both branches.
 - In the cache-first path, a cached user restores the UI with session null and avoids an immediate /v1/session request. This cached state is not proof of a live authenticated session; protected operations must verify the session with NinjaAuth.
 - Extension build, Chrome functional tests, and live cookie/CORS end-to-end verification remain open.
-- NinjaAuth v1.0.1-beta is the internal milestone name; the SDK package metadata is still 0.1.0 and no public beta package is claimed.
 
 See [NinjaAuth Extension Integration](docs/NINJAAUTH-INTEGRATION.md) for the runtime contract and verification checklist.
 
