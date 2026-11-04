@@ -1,7 +1,7 @@
 /* global chrome */
 // @ts-nocheck
 
-importScripts("../libs/ninja-auth.iife.js");
+importScripts("../libs/NinjaAuth-iife.global.js");
 
 console.log("Background worker attivato");
 
@@ -13,6 +13,18 @@ let currentUrl = "";
 let isAuthenticating = false;
 let ninjaAuthInitialized = false;
 
+//======================
+// NinjaAuth Initialization
+//======================
+
+const auth = new NinjaAuth();
+auth.init({
+			clientId: CLIENT_ID,
+			redirectUri: chrome.identity.getRedirectURL("auth"),
+			platform: "extension",
+			environment: AUTH_ENVIRONMENT
+		});
+		ninjaAuthInitialized = true;
 // ======================
 // INIT
 // ======================
@@ -307,23 +319,23 @@ async function handleShorten(longUrl) {
 /* NinjaAuth integration */
 // ======================
 
-function getNinjaAuth() {
-	if (!globalThis.NinjaConnect?.NinjaAuth) {
-		throw new Error("NinjaAuth SDK bundle is not available in the Background worker.");
-	}
+// function getNinjaAuth() {
+// 	if (!globalThis.NinjaConnect?.NinjaAuth) {
+// 		throw new Error("NinjaAuth SDK bundle is not available in the Background worker.");
+// 	}
 
-	if (!ninjaAuthInitialized) {
-		globalThis.NinjaConnect.NinjaAuth.init({
-			clientId: CLIENT_ID,
-			redirectUri: chrome.identity.getRedirectURL("auth"),
-			platform: "extension",
-			environment: AUTH_ENVIRONMENT
-		});
-		ninjaAuthInitialized = true;
-	}
+// 	if (!ninjaAuthInitialized) {
+// 		globalThis.NinjaConnect.NinjaAuth.init({
+// 			clientId: CLIENT_ID,
+// 			redirectUri: chrome.identity.getRedirectURL("auth"),
+// 			platform: "extension",
+// 			environment: AUTH_ENVIRONMENT
+// 		});
+// 		ninjaAuthInitialized = true;
+// 	}
 
-	return globalThis.NinjaConnect.NinjaAuth;
-}
+// 	return globalThis.NinjaConnect.NinjaAuth;
+// }
 
 function anonymousSession() {
 	return {
@@ -352,7 +364,6 @@ async function login() {
 	isAuthenticating = true;
 
 	try {
-		const auth = getNinjaAuth();
 		await auth.login();
 		const session = await auth.getSession();
 
@@ -396,7 +407,7 @@ async function restoreSession() {
             };
         }
 
-        const session = await getNinjaAuth().getSession();
+        const session = await auth.getSession();
 
         if (session?.authenticated && session.user) {
             await saveSession(session);
@@ -411,7 +422,6 @@ async function restoreSession() {
 }
 
 async function logout() {
-	const auth = getNinjaAuth();
 	await auth.logout();
 
 	const session = anonymousSession();

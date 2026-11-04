@@ -42,14 +42,20 @@ body.app {
     color: var(--color-text);
 }
 
+#profile_container{
+    display: flex;
+    gap: 8px;
+}
+
 .topbar {
+    /* width: 180px; */
     display: flex;
     justify-content: space-between;
     align-items: right;
     padding: var(--space-sm) var(--space-md);
     border-bottom: 1px solid var(--color-border);
     flex-direction: column;
-    place-self: flex-end;
+    align-items: flex-end;
 }
 
 .topbar__logo {
@@ -63,6 +69,7 @@ body.app {
 }
 
 .topbar__login {
+    /* display: flex; */
     background: none;
     border: none;
     color: var(--color-muted);
