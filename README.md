@@ -30,6 +30,24 @@ NinjaURL turns ordinary URLs into short, programmable links, with a Chrome Exten
 - SDK package/source version: `v0.1.0`.
 - Extension build, Chrome functional tests, and live cookie/CORS end-to-end verification remain open.
 
+## Anonymous link key lifecycle
+
+### Current implementation (reviewed 2026-11-04)
+
+- The Background reads `ninja_guest_api_key` from `chrome.storage.local` and sends it as `x-api-key` when present.
+- On the first shortening request, if the key is absent, the Extension omits the header. The Worker currently generates a `NIKO_R_...` key and returns it; the Extension stores that returned key locally.
+- The Extension does not currently generate the anonymous key at installation and does not register a client-generated key with the Worker.
+- The reviewed v6 manifest points to `service/background.js`; that source currently sets `API_BASE = http://127.0.0.1:8787/v1` and `AUTH_ENVIRONMENT = "development"`. This is a development configuration and must be reviewed before packaging a user-facing build.
+
+### Agreed next design (not implemented)
+
+- Generate the anonymous key locally when the Extension is first installed/initialized.
+- Do not create a server-side `APIKEYS` record until the first real use.
+- Register the locally generated key idempotently with the Worker on that first use; start the 24-hour server TTL at registration time.
+- Reuse the local key for subsequent requests and replace it after expiry/invalidity without requiring reinstallation.
+
+The Worker and Extension changes, key-loss/reinstall behavior, and the end-to-end registration flow still need implementation and tests. The current server-generated flow remains the implemented behavior until that work is completed.
+
 See [NinjaAuth Extension Integration](docs/NINJAAUTH-INTEGRATION.md) for the runtime contract and verification checklist.
 
 ## Architecture principles
