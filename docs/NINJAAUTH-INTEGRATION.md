@@ -1,6 +1,6 @@
 # NinjaAuth Integration — NinjaURL Extension
 
-> Branches verified: `dev` and `master`. The reviewed integration document and Background source have identical content on both branches.
+> Branches verified: `dev` and `master`. The Background source has identical content on both branches; this guide documents that shared integration behavior.
 
 ## Responsibility split
 
