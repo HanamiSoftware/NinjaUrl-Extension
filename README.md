@@ -27,6 +27,7 @@ NinjaURL turns ordinary URLs into short, programmable links, with a Chrome Exten
 
 - NinjaAuth integration and cache-first session restoration are present on both `dev` and `master`; the reviewed Background source file has identical content on both branches.
 - In the cache-first path, a cached user restores the UI with session null and avoids an immediate /v1/session request. This cached state is not proof of a live authenticated session; protected operations must verify the session with NinjaAuth.
+- SDK package/source version: `v0.1.0`.
 - Extension build, Chrome functional tests, and live cookie/CORS end-to-end verification remain open.
 
 See [NinjaAuth Extension Integration](docs/NINJAAUTH-INTEGRATION.md) for the runtime contract and verification checklist.
