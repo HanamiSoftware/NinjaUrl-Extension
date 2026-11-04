@@ -1,95 +1,72 @@
-# NinjaAuth integration — NinjaURL Chrome Extension
+# NinjaAuth Integration — NinjaURL Extension (dev)
 
-**Reviewed:** 3 November 2026  
-**Project milestone:** NinjaAuth v1.0.1-beta (internal milestone name; not a published package release).
+> Branch scope: `dev` only. The Extension dev branch is divergent from master; this document does not describe master.
 
-## Responsibility boundaries
+## Responsibility split
 
-- **Ninja Connect** owns shared identity, authentication, and the server-side session lifecycle.
-- **NinjaAuth SDK** owns client-side Authorization Code + PKCE, session lookup, and logout.
-- **Background Service Worker** initializes the SDK, coordinates the authentication flow, and adapts results to Chrome runtime messages.
-- **Side Panel** displays account state and product UI. It must not implement OAuth or call the Auth Worker session endpoints directly.
-- **NinjaURL Worker** owns NinjaURL application APIs, product data, and capabilities.
+- NinjaAuth owns OAuth Authorization Code + PKCE, code exchange, session lookup, and current-session logout.
+- The Background Service Worker owns the SDK instance and initialization.
+- The Background translates SDK results into Chrome runtime messages and owns the local UI cache.
+- The Side Panel is a UI client; it does not implement OAuth or call Auth Worker session routes directly.
 
-The browser session is represented by an HttpOnly cookie. The Extension must not read or persist the raw session secret.
+## Current Background integration
 
-## Packaging and initialization
+The dev Background loads the NinjaAuth class into its own JavaScript runtime, creates one instance with `new NinjaAuth()`, and initializes it once with:
 
-The Manifest V3 Background Service Worker is a classic worker. It loads the vendored SDK bundle using:
+- Extension client ID.
+- `chrome.identity.getRedirectURL("auth")`.
+- `platform: "extension"`.
+- `environment: "development"`.
 
-~~~js
-importScripts("../libs/ninja-auth.iife.js");
-~~~
+The same instance is used for login, session lookup, and logout.
 
-The Background initializes NinjaAuth with:
+### Login
 
-- the registered NinjaURL Extension client ID;
-- chrome.identity.getRedirectURL("auth") as redirect URI;
-- platform extension;
-- environment development in the reviewed branch.
+1. Call SDK `login()`.
+2. Call SDK `getSession()`.
+3. Require an authenticated result and user.
+4. Save the user profile in `chrome.storage.local`.
+5. Notify the UI with `USER_UPDATED`.
 
-The local Ninja Connect Auth Worker endpoint is http://127.0.0.1:8787/v1. The production SDK endpoint is https://auth.ninjaconnect.io/v1. The Extension build and environment configuration must be verified before release.
+### Restore
 
-## Runtime message contract
+1. Read the cached user from `chrome.storage.local`.
+2. If present, restore the UI immediately with `authenticated: true` and `session: null`; this cache-hit path does not call the server.
+3. If absent, call SDK `getSession()`.
+4. Cache the user only when the server returns an authenticated session.
+5. Preserve and propagate operational errors rather than silently converting them into anonymous state.
 
-The Side Panel sends RESTORE_SESSION to the Background. The Background returns a response envelope with:
+A cache hit is presentation restoration only. It does not prove that the server session is still valid.
 
-- success;
-- authenticated;
-- user;
-- session;
-- data, containing the normalized NinjaSession result.
+### Logout
 
-LOGIN and LOGOUT also return normalized session data through data. The Side Panel renders the returned state; it does not infer authentication from a cached API key or implement its own OAuth flow.
+1. Call SDK `logout()`.
+2. Only after successful server confirmation, remove the cached user.
+3. Notify the UI with the anonymous session.
 
-## Session restoration
+If the SDK logout call fails, the current flow does not proceed to remove the cached user.
 
-### Current master behavior
+## Manual smoke checks reported by the project owner
 
-The NinjaAuth integration is present on Extension master at commit 9606469a3f6412c5d47c9ee83c38b359499e1e8d. In this version, restoreSession() calls NinjaAuth getSession() and persists a valid authenticated user.
+On 4 November 2026, the project owner reported successful manual checks of:
 
-### Cache-first behavior on dev
+- Login.
+- Logout.
+- Session recovery from the server.
+- UI/session restoration from local storage.
 
-The remote dev branch is two commits ahead of master as reviewed on 3 November 2026. Its Background restoreSession() first reads user from chrome.storage.local.
+These are owner-reported manual smoke checks, not automated test or CI evidence.
 
-1. If a cached user exists, return an immediate UI snapshot with authenticated true, the cached user, and session null.
-2. Do not call NinjaAuth getSession() or GET /v1/session on that cache hit.
-3. If no cached user exists, call NinjaAuth getSession().
-4. Save the user only when NinjaAuth returns an authenticated session with a user.
-5. If the live lookup fails temporarily, propagate the error and preserve the cached user.
+## Remaining integration checks
 
-The Side Panel uses RESTORE_SESSION and consumes data. It does not need a separate GET_USER round trip for the cache-first path.
+- [ ] Verify a cache hit makes no `/v1/session` request.
+- [ ] Verify a cache miss performs `getSession()` and caches only an authenticated user.
+- [ ] Verify a temporary server failure does not erase a cached user.
+- [ ] Verify the cache-only result cannot authorize protected operations.
+- [ ] Verify a live session check occurs before every protected operation.
+- [ ] Verify cookie creation, retention, and clearing in Chrome.
+- [ ] Verify credentialed CORS for the exact Extension origin.
+- [ ] Verify Service Worker restart and session recovery.
+- [ ] Verify login again after logout.
 
-### Security meaning of session null
-
-A cached user is presentation state, not proof of a valid server session.
-
-- authenticated true in a cache-only response means a user profile was found locally and the UI can be restored.
-- session null means the server session was not checked in that call.
-- A protected operation must call NinjaAuth getSession() and require a valid authenticated result before relying on the session.
-- A network or Worker failure must remain an error; it must not be converted into an anonymous result or silently treated as a verified session.
-
-The live-session check before protected operations is a required follow-up and must be tested before the cache-first path is promoted to master.
-
-## Current branch state
-
-| Repository branch | State |
-|---|---|
-| master | NinjaAuth integration is present; restoreSession() still calls getSession() on every restore |
-| dev | Two commits ahead of master; contains the cache-first restoreSession() implementation |
-| feature/typescript-migration-(v7) | Separate TypeScript migration work |
-
-The old feature/NinjaAuth-Integration branch is not present in the current remote branch listing. Do not use that name as the current integration branch.
-
-## Verification still required
-
-- Build the Extension and inspect the packaged MV3 Background and vendored IIFE.
-- Load the Extension in Chrome and verify login, session restore, logout, and login again.
-- Verify cookie creation, persistence, transmission, and clearing.
-- Verify the actual Extension origin against the Auth Worker CORS allowlist.
-- Verify temporary session lookup failures preserve cached user data.
-- Verify a cache hit makes no /v1/session request.
-- Verify a protected operation forces a live NinjaAuth session check when the cached result contains session null.
-- Confirm the vendored IIFE is generated from the intended SDK source/build and matches the package version and default scope.
-
-No Extension build, Chrome E2E, or live cookie/CORS verification is claimed by this document.
+See the SDK [Test Plan](https://github.com/HanamiSoftware/NinjaAuth-SDK/blob/dev/docs/TEST-PLAN.md) for the full integration matrix.
