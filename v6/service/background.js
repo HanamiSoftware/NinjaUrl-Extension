@@ -7,7 +7,7 @@ console.log("Background worker attivato");
 
 const CLIENT_ID = "bc418ed1dc646a32";
 const AUTH_ENVIRONMENT = "development";
-const API_BASE = "http://127.0.0.1:8787/v1";
+const API_BASE = "http://127.0.0.1:8788/v1";
 
 let currentUrl = "";
 let isAuthenticating = false;
@@ -228,20 +228,12 @@ async function deleteLink(id) {
 
 async function handleShorten(longUrl) {
 	try {
-		//const token = await getValidAccessToken();
-
-		const { ninja_guest_api_key } =
-			await chrome.storage.local.get("ninja_guest_api_key");
 
 		const res = await fetch(`${API_BASE}/link/create`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				// ...(token ? { Authorization: `Bearer ${token}` } : {}),// Aggiungi l'header x-api-key solo se la chiave esiste 
-				//                ed inoltre non useremo piu' il token ma il cookie http only tramite credentials:'include'
-				...(ninja_guest_api_key
-					? { "x-api-key": ninja_guest_api_key }
-					: {})
+				credentials: "include",
 			},
 			body: JSON.stringify({
 				url: longUrl
@@ -255,8 +247,7 @@ async function handleShorten(longUrl) {
 		}
 
 		const {
-			slug,
-			apiKey
+			slug
 		} = data.data;
 
 		if (!slug) {
@@ -264,13 +255,13 @@ async function handleShorten(longUrl) {
 		}
 
 		// Salva la guest api key solo la prima volta
-		if (!ninja_guest_api_key && apiKey) {
-			await chrome.storage.local.set({
-				ninja_guest_api_key: apiKey
-			});
-		}
+		// if (!ninja_guest_api_key && apiKey) {
+		// 	await chrome.storage.local.set({
+		// 		ninja_guest_api_key: apiKey
+		// 	});
+		// }
 
-		const short = `https://n2l.ink/${slug}`;
+		const short = `https://${slug}`;
 
 		const links = await getLinks();
 
@@ -315,28 +306,6 @@ async function handleShorten(longUrl) {
 	}
 }
 
-// ======================
-/* NinjaAuth integration */
-// ======================
-
-// function getNinjaAuth() {
-// 	if (!globalThis.NinjaConnect?.NinjaAuth) {
-// 		throw new Error("NinjaAuth SDK bundle is not available in the Background worker.");
-// 	}
-
-// 	if (!ninjaAuthInitialized) {
-// 		globalThis.NinjaConnect.NinjaAuth.init({
-// 			clientId: CLIENT_ID,
-// 			redirectUri: chrome.identity.getRedirectURL("auth"),
-// 			platform: "extension",
-// 			environment: AUTH_ENVIRONMENT
-// 		});
-// 		ninjaAuthInitialized = true;
-// 	}
-
-// 	return globalThis.NinjaConnect.NinjaAuth;
-// }
-
 function anonymousSession() {
 	return {
 		authenticated: false,
@@ -370,7 +339,7 @@ async function login() {
 		if (!session.authenticated || !session.user) {
 			throw new Error("NinjaAuth login completed without an authenticated session.");
 		}
-
+		
 		await saveSession(session);
 		notifySessionUpdate(session);
 		return session;
@@ -396,29 +365,14 @@ async function login() {
 }
 
 async function restoreSession() {
-    try {
-        const user = await getUser();
-
-        if (user) {
-            return {
-                authenticated: true,
-                user,
-                session: null
-            };
-        }
-
-        const session = await auth.getSession();
-
-        if (session?.authenticated && session.user) {
-            await saveSession(session);
-        }
-
-        return session;
-
-    } catch (error) {
-        console.error("[Background] Session restore failed:", error);
-        throw error;
-    }
+	try {
+		const session = await auth.getSession();
+		await saveSession(session);
+		return session;
+	} catch (error) {
+		console.error("[Background] Session restore failed:", error);
+		throw error;
+	}
 }
 
 async function logout() {
