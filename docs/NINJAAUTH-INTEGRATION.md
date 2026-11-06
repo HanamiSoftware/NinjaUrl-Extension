@@ -1,6 +1,6 @@
-# NinjaAuth Integration — NinjaURL Extension (dev)
+# NinjaAuth Integration — NinjaURL Extension
 
-> Branch scope: `dev` only. The Extension dev branch is divergent from master; this document does not describe master.
+> Branches verified: `dev` and `master`. The Background source has identical content on both branches; this guide documents that shared integration behavior.
 
 ## Responsibility split
 
@@ -11,7 +11,7 @@
 
 ## Current Background integration
 
-The dev Background loads the NinjaAuth class into its own JavaScript runtime, creates one instance with `new NinjaAuth()`, and initializes it once with:
+The Background on both branches loads the NinjaAuth class into its own JavaScript runtime, creates one instance with `new NinjaAuth()`, and initializes it once with:
 
 - Extension client ID.
 - `chrome.identity.getRedirectURL("auth")`.
@@ -68,5 +68,7 @@ These are owner-reported manual smoke checks, not automated test or CI evidence.
 - [ ] Verify credentialed CORS for the exact Extension origin.
 - [ ] Verify Service Worker restart and session recovery.
 - [ ] Verify login again after logout.
+
+The SDK package/source version is `v0.1.0`.
 
 See the SDK [Test Plan](https://github.com/HanamiSoftware/NinjaAuth-SDK/blob/dev/docs/TEST-PLAN.md) for the full integration matrix.
