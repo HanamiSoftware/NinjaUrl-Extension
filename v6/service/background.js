@@ -228,20 +228,12 @@ async function deleteLink(id) {
 
 async function handleShorten(longUrl) {
 	try {
-		//const token = await getValidAccessToken();
-
-		const { ninja_guest_api_key } =
-			await chrome.storage.local.get("ninja_guest_api_key");
 
 		const res = await fetch(`${API_BASE}/link/create`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				// ...(token ? { Authorization: `Bearer ${token}` } : {}),// Aggiungi l'header x-api-key solo se la chiave esiste 
-				//                ed inoltre non useremo piu' il token ma il cookie http only tramite credentials:'include'
-				...(ninja_guest_api_key
-					? { "x-api-key": ninja_guest_api_key }
-					: {})
+				credentials: "include",
 			},
 			body: JSON.stringify({
 				url: longUrl
@@ -255,8 +247,7 @@ async function handleShorten(longUrl) {
 		}
 
 		const {
-			slug,
-			apiKey
+			slug
 		} = data.data;
 
 		if (!slug) {
@@ -264,13 +255,13 @@ async function handleShorten(longUrl) {
 		}
 
 		// Salva la guest api key solo la prima volta
-		if (!ninja_guest_api_key && apiKey) {
-			await chrome.storage.local.set({
-				ninja_guest_api_key: apiKey
-			});
-		}
+		// if (!ninja_guest_api_key && apiKey) {
+		// 	await chrome.storage.local.set({
+		// 		ninja_guest_api_key: apiKey
+		// 	});
+		// }
 
-		const short = `https://n2l.ink/${slug}`;
+		const short = `https://${slug}`;
 
 		const links = await getLinks();
 
@@ -315,28 +306,6 @@ async function handleShorten(longUrl) {
 	}
 }
 
-// ======================
-/* NinjaAuth integration */
-// ======================
-
-// function getNinjaAuth() {
-// 	if (!globalThis.NinjaConnect?.NinjaAuth) {
-// 		throw new Error("NinjaAuth SDK bundle is not available in the Background worker.");
-// 	}
-
-// 	if (!ninjaAuthInitialized) {
-// 		globalThis.NinjaConnect.NinjaAuth.init({
-// 			clientId: CLIENT_ID,
-// 			redirectUri: chrome.identity.getRedirectURL("auth"),
-// 			platform: "extension",
-// 			environment: AUTH_ENVIRONMENT
-// 		});
-// 		ninjaAuthInitialized = true;
-// 	}
-
-// 	return globalThis.NinjaConnect.NinjaAuth;
-// }
-
 function anonymousSession() {
 	return {
 		authenticated: false,
@@ -370,18 +339,7 @@ async function login() {
 		if (!session.authenticated || !session.user) {
 			throw new Error("NinjaAuth login completed without an authenticated session.");
 		}
-		const cookie = await chrome.cookies.get({
-			url: "http://127.0.0.1:8787",
-			name: "ninja_session"
-		});
-
-		console.log({
-			found: !!cookie,
-			httpOnly: cookie?.httpOnly,
-			secure: cookie?.secure,
-			sameSite: cookie?.sameSite,
-			expirationDate: cookie?.expirationDate
-		});
+		
 		await saveSession(session);
 		notifySessionUpdate(session);
 		return session;
