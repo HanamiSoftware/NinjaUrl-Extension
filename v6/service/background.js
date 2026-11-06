@@ -7,7 +7,7 @@ console.log("Background worker attivato");
 
 const CLIENT_ID = "bc418ed1dc646a32";
 const AUTH_ENVIRONMENT = "development";
-const API_BASE = "http://127.0.0.1:8787/v1";
+const API_BASE = "http://127.0.0.1:8788/v1";
 
 let currentUrl = "";
 let isAuthenticating = false;
@@ -370,7 +370,18 @@ async function login() {
 		if (!session.authenticated || !session.user) {
 			throw new Error("NinjaAuth login completed without an authenticated session.");
 		}
+		const cookie = await chrome.cookies.get({
+			url: "http://127.0.0.1:8787",
+			name: "ninja_session"
+		});
 
+		console.log({
+			found: !!cookie,
+			httpOnly: cookie?.httpOnly,
+			secure: cookie?.secure,
+			sameSite: cookie?.sameSite,
+			expirationDate: cookie?.expirationDate
+		});
 		await saveSession(session);
 		notifySessionUpdate(session);
 		return session;
@@ -396,29 +407,14 @@ async function login() {
 }
 
 async function restoreSession() {
-    try {
-        const user = await getUser();
-
-        if (user) {
-            return {
-                authenticated: true,
-                user,
-                session: null
-            };
-        }
-
-        const session = await auth.getSession();
-
-        if (session?.authenticated && session.user) {
-            await saveSession(session);
-        }
-
-        return session;
-
-    } catch (error) {
-        console.error("[Background] Session restore failed:", error);
-        throw error;
-    }
+	try {
+		const session = await auth.getSession();
+		await saveSession(session);
+		return session;
+	} catch (error) {
+		console.error("[Background] Session restore failed:", error);
+		throw error;
+	}
 }
 
 async function logout() {

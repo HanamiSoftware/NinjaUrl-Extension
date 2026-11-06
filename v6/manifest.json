@@ -18,7 +18,8 @@
     "https://api.ninjaurl.io/*",
     "https://n2l.ink/*",
     "https://auth.ninjaconnect.io/*",
-    "http://127.0.0.1:8787/*"
+		"http://127.0.0.1:8787/*",
+		"http://127.0.0.1:8788/*"
   ],
 
   "permissions": [
