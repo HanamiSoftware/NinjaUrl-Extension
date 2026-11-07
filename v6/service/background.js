@@ -6,8 +6,8 @@ importScripts("../libs/NinjaAuth-iife.global.js");
 console.log("Background worker attivato");
 
 const CLIENT_ID = "bc418ed1dc646a32";
-const AUTH_ENVIRONMENT = "development";
-const API_BASE = "http://127.0.0.1:8788/v1";
+const AUTH_ENVIRONMENT = "production";
+const API_BASE = "https://api.ninjaurl.io/v1";
 
 let currentUrl = "";
 let isAuthenticating = false;
