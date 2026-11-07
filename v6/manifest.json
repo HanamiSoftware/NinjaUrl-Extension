@@ -20,8 +20,7 @@
 		"https://auth.ninjaconnect.io/*",
 		"http://127.0.0.1:8787/*",
 		"http://127.0.0.1:8788/*",
-		"http://127.0.0.1:8789/*",
-		"https://events.ninjaurl.io/*"
+		"http://127.0.0.1:8789/*"
 	],
 
   "permissions": [

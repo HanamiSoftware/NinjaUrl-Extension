@@ -228,10 +228,15 @@ async function deleteLink(id) {
 
 async function handleShorten(longUrl) {
 	try {
-
+		const cookie = await chrome.cookies.get({
+			url:"https://auth.ninjaconnect.io",
+			name: "ninja_session"
+		});
+		console.log("handleShorten: cookie", cookie);
 		const res = await fetch(`${API_BASE}/link/create`, {
 			method: "POST",
 			headers: {
+				"Authorization": cookie ? `Bearer ${cookie.value}` : "",
 				"Content-Type": "application/json",
 				credentials: "include",
 			},
