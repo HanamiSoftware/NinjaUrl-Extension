@@ -252,6 +252,7 @@ async function handleShorten(longUrl) {
 		}
 
 		const {
+			hostname,
 			slug
 		} = data.data;
 
@@ -266,7 +267,7 @@ async function handleShorten(longUrl) {
 		// 	});
 		// }
 
-		const short = `https://${slug}`;
+		const short = `https://${hostname}/${slug}`;
 
 		const links = await getLinks();
 
