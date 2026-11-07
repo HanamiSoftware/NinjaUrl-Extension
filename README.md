@@ -1,4 +1,4 @@
-# NinjaURL — Smart NinjaLinks for Builders
+# NinjaURL - Smart NinjaLinks for Builders
 
 ## Stop using dumb links
 
