@@ -255,7 +255,7 @@ async function handleShorten(longUrl) {
 			hostname,
 			slug
 		} = data.data;
-
+		const linkId = data.data.record.id;
 		if (!slug) {
 			throw new Error("Invalid API response");
 		}
@@ -272,7 +272,7 @@ async function handleShorten(longUrl) {
 		const links = await getLinks();
 
 		const newItem = {
-			id: crypto.randomUUID(),
+			id: linkId,
 			slug,
 			short,
 			long: longUrl,
