@@ -228,10 +228,15 @@ async function deleteLink(id) {
 
 async function handleShorten(longUrl) {
 	try {
-
+		const cookie = await chrome.cookies.get({
+			url:"https://auth.ninjaconnect.io",
+			name: "ninja_session"
+		});
+		console.log("handleShorten: cookie", cookie);
 		const res = await fetch(`${API_BASE}/link/create`, {
 			method: "POST",
 			headers: {
+				"Authorization": cookie ? `Bearer ${cookie.value}` : "",
 				"Content-Type": "application/json",
 				credentials: "include",
 			},
@@ -247,9 +252,10 @@ async function handleShorten(longUrl) {
 		}
 
 		const {
+			hostname,
 			slug
 		} = data.data;
-
+		const linkId = data.data.record.id;
 		if (!slug) {
 			throw new Error("Invalid API response");
 		}
@@ -261,12 +267,12 @@ async function handleShorten(longUrl) {
 		// 	});
 		// }
 
-		const short = `https://${slug}`;
+		const short = `https://${hostname}/${slug}`;
 
 		const links = await getLinks();
 
 		const newItem = {
-			id: crypto.randomUUID(),
+			id: linkId,
 			slug,
 			short,
 			long: longUrl,

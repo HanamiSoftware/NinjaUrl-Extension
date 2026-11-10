@@ -178,6 +178,8 @@ function renderLinks() {
                 </div>`
         container.appendChild(el);
     }
+	console.log("Rendering links:", visible.length, "visible out of", allLinks.length, "total");
+	console.log("Visible Link payload", { visible });
     visible.forEach((link, i) => {
         const el = document.createElement("div");
         el.dataset.id = link.id;
@@ -200,7 +202,7 @@ function renderLinks() {
                             <img src="../assets/ui-icons/icon-menu.svg">
                         </button>
                         <div class="dropdown-menu">
-
+						<button data-action="dash">View in Dash</button>
                         <button data-action="share">Share</button>
                         <button data-action="delete" style="color: red;">Delete</button>
                             
@@ -349,7 +351,7 @@ async function setupEvents() {
 
             switch (action) {
                 case "dash":
-                    chrome.tabs.create({ url: `https://dash.ninjaurl.io/links/${id}` });
+                    chrome.tabs.create({ url: `http://127.0.0.1:8788/v1/link/${id}` });
                     break;
 
                 case "delete":

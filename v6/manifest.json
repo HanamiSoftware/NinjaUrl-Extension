@@ -13,14 +13,15 @@
   "background": {
     "service_worker": "service/background.js"
   },
-  "host_permissions": [
-    "https://ninjaurl.io/*",
-    "https://api.ninjaurl.io/*",
-    "https://n2l.ink/*",
-    "https://auth.ninjaconnect.io/*",
+	"host_permissions": [
+		"https://ninjaurl.io/*",
+		"https://api.ninjaurl.io/*",
+		"https://n2l.ink/*",
+		"https://auth.ninjaconnect.io/*",
 		"http://127.0.0.1:8787/*",
-		"http://127.0.0.1:8788/*"
-  ],
+		"http://127.0.0.1:8788/*",
+		"http://127.0.0.1:8789/*"
+	],
 
   "permissions": [
     "storage",
