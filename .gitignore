@@ -363,8 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 /google4240d1601bd05d9a.html
 /privacy.html
-/v6.zip
-/v6-3.8.2026.zip
-/v6.crx
-/v6.pem
-/v6-13.08.2026.zip
+/*.crx
+/*.pem
+/*.zip
+/*.tgz

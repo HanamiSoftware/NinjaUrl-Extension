@@ -1,7 +1,7 @@
 {
-  "name": "v6",
+  "name": "@hanami-software/Chrome-Extension-v6",
   "version": "0.0.1",
-  "description": "",
+  "description": "NinjaURL Chrome Extension - 0.0.1-Beta",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
