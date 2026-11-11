@@ -501,7 +501,7 @@
       try {
         response = await fetch(
           getNinjaConnectEndpoints(
-            this.config.environment ?? "production"
+            this.config.environment ?? "development"
           ).session,
           {
             method: "GET",

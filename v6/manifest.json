@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "NinjaURL",
-  "version": "1.0",
+  "version": "0.0.1",
   "action": {
     "default_title": "NinjaURL",
     "default_icon": {

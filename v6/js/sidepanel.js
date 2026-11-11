@@ -351,7 +351,7 @@ async function setupEvents() {
 
             switch (action) {
                 case "dash":
-                    chrome.tabs.create({ url: `http://127.0.0.1:8788/v1/link/${id}` });
+                    chrome.tabs.create({ url: `https://api.ninjaurl.io/v1/link/${id}` });
                     break;
 
                 case "delete":
