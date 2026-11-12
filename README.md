@@ -21,7 +21,7 @@ NinjaURL turns ordinary URLs into short, programmable links, with a Chrome Exten
 - Ninja Connect owns shared identity and the server-side session.
 - The Background Service Worker adapts SDK results to Chrome runtime messages.
 - The Side Panel remains a UI client; it does not implement OAuth or own the authentication protocol.
-- The session cookie is HttpOnly. The Extension must not read or persist the raw session secret.
+- The session credential must never be logged or persisted in browser storage. Static review of the current V6 `handleShorten()` path found that it reads the `ninja_session` cookie and logs the returned cookie object before forwarding its value as a Bearer credential. This is a P0 security finding requiring a separately reviewed code change; see [Project Status](docs/PROJECT-STATUS.md).
 
 ## Current authentication integration status
 
@@ -30,7 +30,7 @@ NinjaURL turns ordinary URLs into short, programmable links, with a Chrome Exten
 - SDK package/source version: `v0.1.0`.
 - Extension build, Chrome functional tests, and live cookie/CORS end-to-end verification remain open.
 
-See [NinjaAuth Extension Integration](docs/NINJAAUTH-INTEGRATION.md) for the runtime contract and verification checklist.
+See [NinjaAuth Extension Integration](docs/NINJAAUTH-INTEGRATION.md) for the runtime contract and verification checklist, and [Project Status](docs/PROJECT-STATUS.md) for the current V6/V7 boundaries and P0 security finding.
 
 ## Architecture principles
 
