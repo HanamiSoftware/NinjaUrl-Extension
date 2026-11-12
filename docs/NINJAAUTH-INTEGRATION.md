@@ -72,3 +72,12 @@ These are owner-reported manual smoke checks, not automated test or CI evidence.
 The SDK package/source version is `v0.1.0`.
 
 See the SDK [Test Plan](https://github.com/HanamiSoftware/NinjaAuth-SDK/blob/dev/docs/TEST-PLAN.md) for the full integration matrix.
+
+
+## Additional V6 create-link path — security review required
+
+Static review of `v6/service/background.js` found that `handleShorten()` reads the `ninja_session` cookie from `https://auth.ninjaconnect.io`, logs the returned cookie object, and forwards `cookie.value` as a Bearer credential to the NinjaURL API. This is not covered by the login/restore/logout description above.
+
+The console log can expose the raw session credential in extension/service-worker logs. The design also requires an explicit review of whether the Extension should read the HttpOnly cookie and forward it as a Bearer token at all. Do not treat the cookie as ordinary UI state, do not log it, and do not persist its raw value.
+
+This is a P0 finding for a separate implementation/review task. No runtime code was changed in this documentation branch. See [Project Status](PROJECT-STATUS.md).
