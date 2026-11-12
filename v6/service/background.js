@@ -232,7 +232,6 @@ async function handleShorten(longUrl) {
 			url:"https://auth.ninjaconnect.io",
 			name: "ninja_session"
 		});
-		console.log("handleShorten: cookie", cookie);
 		const res = await fetch(`${API_BASE}/link/create`, {
 			method: "POST",
 			headers: {
@@ -259,12 +258,6 @@ async function handleShorten(longUrl) {
 			throw new Error("Invalid API response");
 		}
 
-		// Salva la guest api key solo la prima volta
-		// if (!ninja_guest_api_key && apiKey) {
-		// 	await chrome.storage.local.set({
-		// 		ninja_guest_api_key: apiKey
-		// 	});
-		// }
 
 		const short = `https://${hostname}/${slug}`;
 
