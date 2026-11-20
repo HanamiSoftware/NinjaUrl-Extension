@@ -26,25 +26,6 @@ A cached user is presentation state only. It is not proof of a valid server sess
 
 The existing [NinjaAuth Integration](NINJAAUTH-INTEGRATION.md) document records the intended SDK/background/Side Panel responsibility split and the manual smoke checks reported on 4 November 2026. Those checks are not automated CI evidence.
 
-## 3. P0 security finding — session cookie exposure in V6
-
-Static inspection of `v6/service/background.js` found the following behavior in `handleShorten()`:
-
-1. The Background reads the `ninja_session` cookie from `https://auth.ninjaconnect.io` through `chrome.cookies.get()`.
-2. It writes the returned cookie object to the console using `console.log("handleShorten: cookie", cookie)`.
-3. It forwards `cookie.value` as a Bearer credential in a request to `https://api.ninjaurl.io/v1/link/create`.
-
-The console statement can expose the raw session credential in extension/service-worker logs. This conflicts with the security rule that the raw session secret must not be logged or exposed to application code unnecessarily.
-
-**Required follow-up, not performed in this documentation branch:**
-- Remove all logging of the cookie object/value.
-- Review whether the Extension should ever read the HttpOnly session cookie and forward its value as a Bearer token.
-- Agree the intended authentication contract between Extension, NinjaAuth and NinjaURL Workers before changing the request path.
-- Verify the browser permission/host access required for the current cookie access.
-- Test anonymous create, authenticated create, revoked session, expired session and logout behavior.
-- Confirm no raw session credential appears in logs, storage, messages or diagnostics.
-
-Do not silently change this flow as part of a documentation task. It needs an explicit implementation task and review.
 
 ## 4. Documentation and test evidence
 
