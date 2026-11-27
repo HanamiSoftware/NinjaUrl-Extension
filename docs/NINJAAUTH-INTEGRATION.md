@@ -72,3 +72,21 @@ These are owner-reported manual smoke checks, not automated test or CI evidence.
 The SDK package/source version is `v0.1.0`.
 
 See the SDK [Test Plan](https://github.com/HanamiSoftware/NinjaAuth-SDK/blob/dev/docs/TEST-PLAN.md) for the full integration matrix.
+
+## Anonymous link session cookie
+
+Anonymous link identity is separate from the NinjaAuth user session.
+
+- The first successful anonymous link creation is identified by the API response and establishes an HttpOnly `ninja_anonymous_session` cookie on `api.ninjaurl.io`.
+- The Background Service Worker must continue to use `credentials: "include"` for API requests. It must not copy the raw anonymous key or its hash into `chrome.storage.local`.
+- The cookie is host-only, Secure, HttpOnly, SameSite=None, and has a 90-day Max-Age. The API refreshes it when another anonymous link is successfully created; read-only activity does not extend the anonymous link lifetime.
+- The API uses the cookie to authenticate later anonymous link creation. The Extension does not need to read the cookie through `chrome.cookies`.
+
+### Registration and migration boundary
+
+A successful NinjaAuth `platform: "extension"` login establishes the central Ninja Connect session. It does not by itself establish the separate NinjaURL application session cookie on `api.ninjaurl.io`.
+
+The Worker now supports `POST /v1/link/sync` using both the NinjaURL application session and the HttpOnly anonymous session cookie. The server clears/revokes the anonymous credential only after synchronization completes. The Extension must not clear local state or infer that migration completed from the NinjaAuth login result alone.
+
+**Remaining Extension integration work:** invoke the cookie-based sync only after a valid NinjaURL application session is available, then reconcile the local link cache with `GET /v1/user/me/links`. The current Side Panel still reads its local cache and does not yet perform that reconciliation.
+
