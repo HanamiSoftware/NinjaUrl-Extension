@@ -9,7 +9,8 @@ NinjaURL turns ordinary URLs into short, programmable links, with a Chrome Exten
 ### Link creation
 - Generate short links through the NinjaURL API.
 - Create and manage links from the browser.
-- Keep recent links available in the Extension interface.
+- Keep recent links available in the Extension interface through a local `chrome.storage.local` cache, rendered newest-first without a database list request when the Side Panel opens.
+- The local link list is a UI cache only; server state remains authoritative for ownership, validity, expiry and security.
 
 ### Chrome Extension
 - One-click shortening from the active tab.
