@@ -1,8 +1,8 @@
 # NinjaURL Extension — Project Status
 
-**Reviewed:** 12 November 2026  
+**Reviewed:** 27 November 2026  
 **Repository:** `HanamiSoftware/NinjaUrl-Extension`  
-**Branch:** `docs/alignment-2026-11-12` (created from `dev`)  
+**Branch:** `docs/local-link-cache-contract` (created from `dev`)  
 **Scope:** documentation and static source inspection; no Extension runtime code changed.
 
 ## 1. Product and branch boundaries
@@ -26,6 +26,18 @@ A cached user is presentation state only. It is not proof of a valid server sess
 
 The existing [NinjaAuth Integration](NINJAAUTH-INTEGRATION.md) document records the intended SDK/background/Side Panel responsibility split and the manual smoke checks reported on 4 November 2026. Those checks are not automated CI evidence.
 
+
+## 3.1 V6 recent links — local cache behavior
+
+Static inspection of `dev` at commit `1a5d30a0d8f59591e5baa6c425ecb061c1aa2f71` confirms:
+
+- The Background reads and writes the recent link array using `chrome.storage.local`.
+- After create succeeds, the new link is prepended with `unshift`; the Side Panel displays newest-first.
+- The Side Panel obtains the list through the Background's `GET_LINKS` message and does not request a server/database list when it opens.
+- `createdAt` is generated locally by the client.
+- Delete currently removes only the local item; the server DELETE call remains commented out.
+
+This behavior is intentional for fast UI restoration, but the cache is not authoritative and does not prove current server state. The local-only delete and lack of server list reconciliation are open gaps. The 90-day anonymous link lifetime is defined in Workers ADR-001; the Extension must never use its cache to override server expiry or security decisions.
 
 ## 4. Documentation and test evidence
 
