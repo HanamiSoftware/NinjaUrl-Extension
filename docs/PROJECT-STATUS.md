@@ -36,8 +36,9 @@ Static inspection of `dev` at commit `1a5d30a0d8f59591e5baa6c425ecb061c1aa2f71` 
 - The Side Panel obtains the list through the Background's `GET_LINKS` message and does not request a server/database list when it opens.
 - `createdAt` is generated locally by the client.
 - Delete currently removes only the local item; the server DELETE call remains commented out.
+- The `links` array is global and not partitioned by anonymous identity or authenticated `userId`; logout removes the cached user profile but leaves the list. This can expose/mix link metadata across sessions or accounts in the same Chrome profile.
 
-This behavior is intentional for fast UI restoration, but the cache is not authoritative and does not prove current server state. The local-only delete and lack of server list reconciliation are open gaps. The 90-day anonymous link lifetime is defined in Workers ADR-001; the Extension must never use its cache to override server expiry or security decisions.
+This behavior is intentional for fast UI restoration, but the cache is not authoritative and does not prove current server state. The global unscoped cache, local-only delete and lack of server list reconciliation are open gaps. Principal isolation and explicit anonymous-to-account transfer behavior must be addressed before beta. The 90-day anonymous link lifetime is defined in Workers ADR-001; the Extension must never use its cache to override server expiry or security decisions.
 
 ## 4. Documentation and test evidence
 
