@@ -79,7 +79,7 @@ Anonymous link identity is separate from the NinjaAuth user session.
 
 - The first successful anonymous link creation is identified by the API response and establishes an HttpOnly `ninja_anonymous_session` cookie on `api.ninjaurl.io`.
 - The Background Service Worker must continue to use `credentials: "include"` for API requests. It must not copy the raw anonymous key or its hash into `chrome.storage.local`.
-- The cookie is host-only, Secure, HttpOnly, SameSite=None, and has a 90-day Max-Age. The API refreshes it when another anonymous link is successfully created; read-only activity does not extend the anonymous link lifetime.
+- The cookie is host-only, Secure, HttpOnly, SameSite=Strict, and has a 90-day Max-Age. The API refreshes it when another anonymous link is successfully created; read-only activity does not extend the anonymous link lifetime.
 - The API uses the cookie to authenticate later anonymous link creation. The Extension does not need to read the cookie through `chrome.cookies`.
 
 ### Registration and migration boundary
